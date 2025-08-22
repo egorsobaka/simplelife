@@ -2,8 +2,8 @@ import Phaser from "phaser";
 import { io, Socket } from "socket.io-client";
 
 const TILE_SIZE = 32;
-const MAP_WIDTH = 10;
-const MAP_HEIGHT = 10;
+const MAP_WIDTH = 20;
+const MAP_HEIGHT = 20;
 const PLAYER_WIDTH = 96;
 const PLAYER_HEIGHT = 128;
 const LAND_SPRITE_SIZE = 16;
@@ -89,31 +89,95 @@ class GameScene extends Phaser.Scene {
       grass: 5,
       sand: 8,
       water: 0,
-      tree: 64,
+      tree: 66,
       stone: 7,
-      woodItem: 575,
+      woodItem: 526,
+      eggItem: 563,
       stoneItem: 210,
     };
 
+    // === сначала всё трава
     for (let y = 0; y < MAP_HEIGHT; y++) {
       mapArr[y] = [];
       for (let x = 0; x < MAP_WIDTH; x++) {
-        let type = "grass";
-        const rand = Math.random();
-        if (rand < 0.05) type = "tree";
-        else if (rand < 0.1) type = "stone";
-        else if (rand < 0.2) type = "sand";
-        else if (rand < 0.15) type = "water";
+        mapArr[y][x] = { sprite: null as any, type: "grass" };
+      }
+    }
 
+    // === РЕКА (змейкой через карту)
+    let ry = Math.floor(MAP_HEIGHT / 2);
+    for (let x = 0; x < MAP_WIDTH; x++) {
+      for (let w = -1; w <= 1; w++) {
+        const yy = ry + w;
+        if (yy >= 0 && yy < MAP_HEIGHT) mapArr[yy][x].type = "water";
+      }
+      // случайный изгиб
+      ry += Math.floor(Math.random() * 2) - 1;
+      if (ry < 2) ry = 2;
+      if (ry > MAP_HEIGHT - 3) ry = MAP_HEIGHT - 3;
+    }
+
+    // === ОЗЁРА
+    // for (let i = 0; i < 3; i++) {
+    //   const cx = Math.floor(Math.random() * MAP_WIDTH);
+    //   const cy = Math.floor(Math.random() * MAP_HEIGHT);
+    //   const r = 3 + Math.floor(Math.random() * 4);
+    //   for (let y = cy - r; y <= cy + r; y++) {
+    //     for (let x = cx - r; x <= cx + r; x++) {
+    //       if (x >= 0 && y >= 0 && x < MAP_WIDTH && y < MAP_HEIGHT) {
+    //         const dx = x - cx, dy = y - cy;
+    //         if (dx * dx + dy * dy <= r * r) mapArr[y][x].type = "water";
+    //       }
+    //     }
+    //   }
+    // }
+
+    // === Каменные гряды
+    for (let i = 0; i < 5; i++) {
+      let gx = Math.floor(Math.random() * MAP_WIDTH);
+      let gy = Math.floor(Math.random() * MAP_HEIGHT);
+      for (let len = 0; len < 8; len++) {
+        if (gx >= 0 && gy >= 0 && gx < MAP_WIDTH && gy < MAP_HEIGHT) {
+          mapArr[gy][gx].type = "stone";
+        }
+        gx += Math.floor(Math.random() * 3) - 1;
+        gy += Math.floor(Math.random() * 3) - 1;
+      }
+    }
+
+    // === Лесные кластеры
+    for (let i = 0; i < 2; i++) {
+      const cx = Math.floor(Math.random() * MAP_WIDTH);
+      const cy = Math.floor(Math.random() * MAP_HEIGHT);
+      for (let y = cy - 3; y <= cy + 3; y++) {
+        for (let x = cx - 3; x <= cx + 3; x++) {
+          if (x >= 0 && y >= 0 && x < MAP_WIDTH && y < MAP_HEIGHT) {
+            if (Math.random() < 0.4) mapArr[y][x].type = "tree";
+          }
+        }
+      }
+    }
+
+    // === Рисуем тайлы и предметы
+    for (let y = 0; y < MAP_HEIGHT; y++) {
+      for (let x = 0; x < MAP_WIDTH; x++) {
+        const type = mapArr[y][x].type;
         const tile = this.add
           .image(x * TILE_SIZE, y * TILE_SIZE, "tiles", TILE_INDEX[type])
           .setOrigin(0)
-          .setScale(TILE_SIZE / LAND_SPRITE_SIZE, TILE_SIZE / LAND_SPRITE_SIZE); // масштабируем тайл с 17->32
+          .setScale(TILE_SIZE / LAND_SPRITE_SIZE, TILE_SIZE / LAND_SPRITE_SIZE);
 
-        mapArr[y][x] = { sprite: tile, type };
+        mapArr[y][x].sprite = tile;
 
+        // предметы только на траве
         if (type === "grass" && Math.random() < 0.05) {
-          const itemType = Math.random() < 0.5 ? "woodItem" : "stoneItem";
+
+          let itemType = Math.random() < 0.5 ? "woodItem" : "stoneItem";
+
+          if (Math.random() < 0.5) {
+            itemType = "eggItem";
+          }
+
           const itemSprite = this.add
             .image(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, "tiles", TILE_INDEX[itemType])
             .setScale(TILE_SIZE / 17, TILE_SIZE / 17)
@@ -122,7 +186,6 @@ class GameScene extends Phaser.Scene {
         }
       }
     }
-    console.log(mapArr);
 
     return { map: mapArr, items: itemsArr };
   }
