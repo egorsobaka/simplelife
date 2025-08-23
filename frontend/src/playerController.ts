@@ -20,7 +20,7 @@ function mod(n: number, m: number) {
 }
 
 // движение с ограничением: нельзя по воде
-export function handleMovement(scene: Phaser.Scene, cursors: Phaser.Types.Input.Keyboard.CursorKeys) {
+export function handleMovement(cursors: Phaser.Types.Input.Keyboard.CursorKeys) {
   const speed = 2;
   let newX = player.x;
   let newY = player.y;

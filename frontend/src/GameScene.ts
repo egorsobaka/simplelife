@@ -3,7 +3,7 @@ import { io, Socket } from "socket.io-client";
 import { player, createPlayer, handleMovement, createAnimations } from "./playerController";
 import { createHUD, updateHUD } from "./hud";
 import { createMinimap, drawMinimap } from "./minimap";
-import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, type ChunkData } from "./chunkManager";
+import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE } from "./chunkManager";
 
 let currentChunkX = 0;
 let currentChunkY = 0;
@@ -35,7 +35,7 @@ class GameScene extends Phaser.Scene {
   update() {
     if (!player) return;
 
-    const { isMove } = handleMovement(this, cursors);
+    const { isMove } = handleMovement(cursors);
     const now = performance.now();
     if (isMove && socket && now - lastMoveSent > MOVE_THROTTLE) {
       socket.emit("move", { x: player.x, y: player.y });
@@ -69,9 +69,9 @@ class GameScene extends Phaser.Scene {
       socket.emit("requestChunks", { cx: currentChunkX, cy: currentChunkY });
     });
 
-    socket.on("chunkData", (data: { x: number; y: number; chunk: ChunkData }) => {
+    //socket.on("chunkData", (data: { x: number; y: number; chunk: ChunkData }) => {
       // loadChunkFromServer(this, data.x, data.y, data.chunk);
-    });
+    //});
 
     socket.on("snapshot", (data: { players: Record<string, any>, chunks: any }) => {
       for (const id in data.players) {

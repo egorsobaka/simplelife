@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import GameScene from "./GameScene";
+import GameScene from "./gameScene.js";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -16,5 +16,5 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 window.addEventListener("load", () => {
-  const game = new Phaser.Game(config);
+  new Phaser.Game(config);
 });
