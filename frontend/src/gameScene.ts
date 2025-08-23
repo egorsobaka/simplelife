@@ -68,13 +68,8 @@ class GameScene extends Phaser.Scene {
     socket.on("connect", () => {
       console.log("Socket connected", socket.id);
       socket.emit("join");
-      // socket.emit("getChunk", { x: currentChunkX, y: currentChunkY });
       socket.emit("requestChunks", { cx: currentChunkX, cy: currentChunkY });
     });
-
-    //socket.on("chunkData", (data: { x: number; y: number; chunk: ChunkData }) => {
-    // loadChunkFromServer(this, data.x, data.y, data.chunk);
-    //});
 
     socket.on("snapshot", (data: { players: Record<string, any>, chunks: any }) => {
       for (const id in data.players) {
