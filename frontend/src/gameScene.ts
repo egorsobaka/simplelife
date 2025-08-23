@@ -45,20 +45,17 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(-Infinity, -Infinity, Infinity, Infinity);
     this.initSocket();
 
-    // === мобильный джойстик ===
+    // --- мобильный джойстик ---
     if (true || this.sys.game.device.os.android || this.sys.game.device.os.iOS) {
       const size = 60;
       const alpha = 0.3;
       const baseX = size + 20;
       const baseY = this.scale.height - size - 20;
 
-      this.joystickBase = this.add.circle(baseX, baseY, size, 0x0000ff, alpha).setScrollFactor(0);
-      this.joystickThumb = this.add.circle(baseX, baseY, size/2, 0x00ff00, alpha).setScrollFactor(0).setInteractive();
+      this.joystickBase = this.add.circle(baseX, baseY, size, 0x0000ff, alpha).setScrollFactor(0).setDepth(1000);;
+      this.joystickThumb = this.add.circle(baseX, baseY, size / 2, 0x00ff00, alpha).setScrollFactor(0).setInteractive().setDepth(1000);
 
-      this.joystickThumb.on("pointerdown", () => {
-        this.joystickThumb.setData("dragging", true);
-      });
-
+      this.joystickThumb.on("pointerdown", () => this.joystickThumb.setData("dragging", true));
       this.input.on("pointerup", () => {
         this.joystickThumb.setData("dragging", false);
         this.joystickThumb.x = this.joystickBase.x;
@@ -68,20 +65,19 @@ class GameScene extends Phaser.Scene {
       });
 
       this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
-        if (this.joystickThumb.getData("dragging")) {
-          const dx = pointer.x - this.joystickBase.x;
-          const dy = pointer.y - this.joystickBase.y;
-          const dist = Math.sqrt(dx*dx + dy*dy);
-          const maxDist = size;
-          const angle = Math.atan2(dy, dx);
-          const limitedDist = Math.min(dist, maxDist);
+        if (!this.joystickThumb.getData("dragging")) return;
+        const dx = pointer.x - this.joystickBase.x;
+        const dy = pointer.y - this.joystickBase.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const maxDist = size;
+        const angle = Math.atan2(dy, dx);
+        const limitedDist = Math.min(dist, maxDist);
 
-          this.joystickThumb.x = this.joystickBase.x + Math.cos(angle) * limitedDist;
-          this.joystickThumb.y = this.joystickBase.y + Math.sin(angle) * limitedDist;
+        this.joystickThumb.x = this.joystickBase.x + Math.cos(angle) * limitedDist;
+        this.joystickThumb.y = this.joystickBase.y + Math.sin(angle) * limitedDist;
 
-          mobileDir.x = (limitedDist / maxDist) * Math.cos(angle);
-          mobileDir.y = (limitedDist / maxDist) * Math.sin(angle);
-        }
+        mobileDir.x = (limitedDist / maxDist) * Math.cos(angle);
+        mobileDir.y = (limitedDist / maxDist) * Math.sin(angle);
       });
     }
   }
@@ -152,10 +148,9 @@ class GameScene extends Phaser.Scene {
       sprite.x += dx / dist * Math.min(step, dist);
       sprite.y += dy / dist * Math.min(step, dist);
     };
-
     for (const id in otherPlayers) smoothMove(otherPlayers[id]);
 
-    // проверка смены чанка
+    // смена чанка
     this.checkChunkChange();
     drawMinimap([], Object.values(otherPlayers));
     updateHUD(currentChunkX, currentChunkY);
@@ -163,8 +158,8 @@ class GameScene extends Phaser.Scene {
 
   checkChunkChange() {
     if (!player || !socket) return;
-    const newChunkX = Math.floor(player.x / (CHUNK_SIZE * 32));
-    const newChunkY = Math.floor(player.y / (CHUNK_SIZE * 32));
+    const newChunkX = Math.floor(player.x / (CHUNK_SIZE*32));
+    const newChunkY = Math.floor(player.y / (CHUNK_SIZE*32));
     if (newChunkX !== currentChunkX || newChunkY !== currentChunkY) {
       currentChunkX = newChunkX;
       currentChunkY = newChunkY;
@@ -188,6 +183,7 @@ class GameScene extends Phaser.Scene {
 
     socket.on("snapshot", (data: { players: Record<string, any>, chunks: any }) => {
       const SNAPSHOT_INTERVAL = 200;
+
       for (const id in data.players) {
         const p = data.players[id];
         let sprite: SmoothSprite;
