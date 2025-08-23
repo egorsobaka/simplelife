@@ -91,7 +91,6 @@ class GameScene extends Phaser.Scene {
 
   createMessageWindow() {
     const width = this.scale.width;
-    const height = this.scale.height;
 
     this.messageText = this.add.text(10, 10, "", {
       font: "16px Arial",
