@@ -48,7 +48,7 @@ class GameScene extends Phaser.Scene {
   update() {
     if (!player) return;
     const dt = this.game.loop.delta / 1000;
-    const maxSpeed = 250;
+    const maxSpeed = 100;
 
     // движение через джойстик
     const { isMove, newX, newY, anim } = handleMovementJoystick(mobileDir.x, mobileDir.y, maxSpeed, dt);
@@ -74,7 +74,7 @@ class GameScene extends Phaser.Scene {
       const dy = player.targetY - player.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const threshold = 10;
-      const correctionSpeed = 250;
+      const correctionSpeed = 100;
       if (dist > threshold) {
         const step = correctionSpeed * dt;
         player.x += dx / dist * Math.min(step, dist);
