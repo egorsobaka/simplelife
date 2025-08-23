@@ -46,7 +46,7 @@ class GameScene extends Phaser.Scene {
     this.initSocket();
 
     // === мобильный джойстик ===
-    if (this.sys.game.device.os.android || this.sys.game.device.os.iOS) {
+    if (true || this.sys.game.device.os.android || this.sys.game.device.os.iOS) {
       const size = 60;
       const alpha = 0.3;
       const baseX = size + 20;
