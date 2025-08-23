@@ -53,8 +53,8 @@ class GameScene extends Phaser.Scene {
       const baseX = size + 20;
       const baseY = this.scale.height - size - 20;
 
-      this.joystickBase = this.add.circle(baseX, baseY, size, 0x0000ff, alpha).setScrollFactor(0);
-      this.joystickThumb = this.add.circle(baseX, baseY, size / 2, 0x00ff00, alpha).setScrollFactor(0).setInteractive();
+      this.joystickBase = this.add.circle(baseX, baseY, size, 0x0000ff, alpha).setScrollFactor(0).setDepth(1000);
+      this.joystickThumb = this.add.circle(baseX, baseY, size / 2, 0x00ff00, alpha).setScrollFactor(0).setInteractive().setDepth(1000);
 
       this.joystickThumb.on("pointerdown", () => this.joystickThumb.setData("dragging", true));
       this.input.on("pointerup", () => {
