@@ -61,7 +61,10 @@ class GameScene extends Phaser.Scene {
   }
 
   initSocket() {
-    socket = io("https://game.almet22.ru/api");
+    socket = io("https://game.almet22.ru", {
+      path: "/socket.io",
+      transports: ["websocket", "polling"]
+    });
     socket.on("connect", () => {
       console.log("Socket connected", socket.id);
       socket.emit("join");
@@ -70,7 +73,7 @@ class GameScene extends Phaser.Scene {
     });
 
     //socket.on("chunkData", (data: { x: number; y: number; chunk: ChunkData }) => {
-      // loadChunkFromServer(this, data.x, data.y, data.chunk);
+    // loadChunkFromServer(this, data.x, data.y, data.chunk);
     //});
 
     socket.on("snapshot", (data: { players: Record<string, any>, chunks: any }) => {
