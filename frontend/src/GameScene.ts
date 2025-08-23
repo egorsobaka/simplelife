@@ -61,7 +61,7 @@ class GameScene extends Phaser.Scene {
   }
 
   initSocket() {
-    socket = io("http://localhost:3000");
+    socket = io("https://game.almet22.ru/api");
     socket.on("connect", () => {
       console.log("Socket connected", socket.id);
       socket.emit("join");
