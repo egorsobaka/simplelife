@@ -5,6 +5,7 @@ import { createMinimap, drawMinimap } from "./minimap";
 import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, loadedChunks, removeItemFromChunk } from "./chunkManager";
 import { handleMovementJoystick } from "./movementHelper.js";
 import socket from "./socket";
+import { InventoryScene } from "./inventoryScene"; // Импорт сцены инвентаря
 
 let currentChunkX = 0;
 let currentChunkY = 0;
@@ -12,7 +13,6 @@ let otherPlayers: Record<string, SmoothSprite> = {};
 let lastMoveSent = 0;
 const MOVE_THROTTLE = 100;
 
-// джойстик
 const mobileDir = { x: 0, y: 0 };
 
 class GameScene extends Phaser.Scene {
@@ -21,8 +21,11 @@ class GameScene extends Phaser.Scene {
   messagesContainer!: Phaser.GameObjects.Container;
   messages: Phaser.GameObjects.Text[] = [];
   messagesVisible = true;
+  inventory: { [key: string]: number } = {}; // Добавлено свойство для инвентаря
 
-  constructor() { super({ key: "GameScene" }); }
+  constructor() {
+    super({ key: "GameScene" });
+  }
 
   preload() {
     this.load.spritesheet("tiles", "/roguelikeSheet_transparent.png", { frameWidth: 16, frameHeight: 16, spacing: 1 });
@@ -38,10 +41,12 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(player);
     this.cameras.main.setBounds(-Infinity, -Infinity, Infinity, Infinity);
 
+    this.scene.add("InventoryScene", InventoryScene); // Добавляем сцену инвентаря
     this.initSocket();
     this.createJoystick();
     this.createMessageWindow();
     this.createMessageToggleKey();
+    this.createInventoryButton(); // Создаем кнопку для инвентаря
   }
 
   update() {
@@ -49,7 +54,6 @@ class GameScene extends Phaser.Scene {
     const dt = this.game.loop.delta / 1000;
     const maxSpeed = 100;
 
-    // движение через джойстик
     const { isMove, newX, newY, anim } = handleMovementJoystick(mobileDir.x, mobileDir.y, maxSpeed, dt);
 
     if (isMove) {
@@ -60,14 +64,12 @@ class GameScene extends Phaser.Scene {
       player.anims.stop();
     }
 
-    // отправка на сервер
     const now = performance.now();
     if (isMove && socket && now - lastMoveSent > MOVE_THROTTLE) {
       socket.emit("move", { x: player.x, y: player.y, anim });
       lastMoveSent = now;
     }
 
-    // плавная корректировка к серверной позиции
     if (player.targetX !== undefined && player.targetY !== undefined) {
       const dx = player.targetX - player.x;
       const dy = player.targetY - player.y;
@@ -81,7 +83,6 @@ class GameScene extends Phaser.Scene {
       }
     }
 
-    // плавное движение других игроков
     const smoothMove = (sprite: SmoothSprite) => {
       if (sprite.targetX === undefined || sprite.targetY === undefined) return;
       const dx = sprite.targetX - sprite.x;
@@ -163,7 +164,15 @@ class GameScene extends Phaser.Scene {
     this.messages.push(text);
 
     socket?.on("message", (msg: string) => this.addMessage(msg));
-    socket?.on("itemPicked", (data: { type: string; x: number; y: number }) => this.addMessage(`Вы подняли ${data.type}`));
+    socket?.on("itemPicked", (data: { type: string; x: number; y: number }) => {
+      this.addMessage(`Вы подняли ${data.type}`);
+      // Добавляем предмет в инвентарь
+      if (this.inventory[data.type]) {
+        this.inventory[data.type]++;
+      } else {
+        this.inventory[data.type] = 1;
+      }
+    });
     socket?.on("itemRemoved", (data: { chunk: string; x: number; y: number }) => {
       removeItemFromChunk(data.chunk, data.x, data.y);
     });
@@ -180,6 +189,40 @@ class GameScene extends Phaser.Scene {
     this.input!.keyboard!.on("keydown-M", () => {
       this.messagesVisible = !this.messagesVisible;
       this.messagesContainer.setVisible(this.messagesVisible);
+    });
+  }
+
+  // Новый метод для создания кнопки инвентаря
+  createInventoryButton() {
+    const invButton = this.add.text(
+      this.scale.width - 10,
+      10,
+      "🎒",
+      { fontSize: "32px", backgroundColor: "#333", padding: { x: 10, y: 5 } }
+    )
+      .setScrollFactor(0)
+      .setInteractive()
+      .setOrigin(1, 0)
+      .setDepth(1000);
+
+    invButton.on("pointerdown", () => {
+      this.scene.pause("GameScene");
+      const inventoryScene = this.scene.get("InventoryScene") as InventoryScene;
+      if (inventoryScene) {
+        inventoryScene.inventoryItems = Object.entries(this.inventory).map(([type, count]) => ({ type, count }));
+        this.scene.launch("InventoryScene");
+      }
+    });
+
+    this.input.keyboard!.on("keydown-I", () => {
+      if (!this.scene.isActive("InventoryScene")) {
+        this.scene.pause("GameScene");
+        const inventoryScene = this.scene.get("InventoryScene") as InventoryScene;
+        if (inventoryScene) {
+          inventoryScene.inventoryItems = Object.entries(this.inventory).map(([type, count]) => ({ type, count }));
+          this.scene.launch("InventoryScene");
+        }
+      }
     });
   }
 
