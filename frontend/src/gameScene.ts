@@ -5,11 +5,11 @@ import { createHUD } from "./hud";
 import { createMinimap, drawMinimap } from "./minimap";
 import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, loadedChunks, removeItemFromChunk } from "./chunkManager";
 import { handleMovementJoystick } from "./movementHelper.js";
+import socket from "./socket";
 
 let currentChunkX = 0;
 let currentChunkY = 0;
 let otherPlayers: Record<string, SmoothSprite> = {};
-let socket!: Socket;
 let lastMoveSent = 0;
 const MOVE_THROTTLE = 100;
 
@@ -186,8 +186,6 @@ class GameScene extends Phaser.Scene {
   }
 
   initSocket() {
-    socket = io("http://localhost:3000", { path: "/socket.io/", transports: ["websocket", "polling"] });
-
     socket.on("connect", () => {
       console.log("Socket connected", socket.id);
       socket.emit("join");
@@ -195,7 +193,6 @@ class GameScene extends Phaser.Scene {
     });
 
     socket.on("itemAdded", (data: { chunk: string; x: number; y: number; type: string }) => {
-      console.log("itemAdded", data)
       const { chunk, x, y, type } = data;
       if (!loadedChunks[chunk]) return;
 
