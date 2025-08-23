@@ -154,7 +154,7 @@ class GameScene extends Phaser.Scene {
     const width = 300;
     const height = 100;
 
-    const bg = this.add.rectangle(x, y, width, height, 0x000000, 0.5).setOrigin(0, 0).setScrollFactor(0).setDepth(1000);
+    this.add.rectangle(x, y, width, height, 0x000000, 0.5).setOrigin(0, 0).setScrollFactor(0).setDepth(1000);
     const text = this.add.text(x + 5, y + 5, "", { fontSize: "14px", color: "#ffffff" }).setScrollFactor(0).setDepth(1001);
     this.messages.push(text);
 
