@@ -23,13 +23,13 @@ export class GameService {
   onModuleInit() {
     // каждые 100 секунд добавляем 100 предметов
     setInterval(() => {
-      this.spawnRandomItems(100);
+      this.spawnRandomItems(10);
     }, 100000);
 
     // каждые 30 секунд проверяем рост деревьев
     setInterval(() => {
       this.growTrees();
-    }, 10000);
+    }, 60000);
   }
 
 
