@@ -23,15 +23,15 @@ export class GameService {
   onModuleInit() {
     setInterval(() => {
       this.spawnRandomItems(10);
-    }, 100000);
+    }, 1000 * 3600);
 
     setInterval(() => {
       this.growTrees();
-    }, 60000);
+    }, 1000 * 3600 / 4);
 
     setInterval(() => {
       this.growStones();
-    }, 120000);
+    }, 1000 * 3600 / 2);
   }
 
 
