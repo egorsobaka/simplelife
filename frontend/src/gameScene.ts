@@ -1,17 +1,25 @@
 import Phaser from "phaser";
 import { io, Socket } from "socket.io-client";
-import { player, createPlayer, handleMovement, createAnimations } from "./playerController";
+import {
+  player,
+  createPlayer,
+  handleMovement,
+  createAnimations,
+  PLAYER_WIDTH,
+  PLAYER_HEIGHT,
+  type SmoothSprite
+} from "./playerController";
 import { createHUD, updateHUD } from "./hud";
 import { createMinimap, drawMinimap } from "./minimap";
-import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE } from "./chunkManager";
+import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, loadedChunks } from "./chunkManager";
 
 let currentChunkX = 0;
 let currentChunkY = 0;
 let cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-let otherPlayers: Record<string, Phaser.GameObjects.Sprite> = {};
+let otherPlayers: Record<string, SmoothSprite> = {};
 let socket!: Socket;
 let lastMoveSent = 0;
-const MOVE_THROTTLE = 100; // ms
+const MOVE_THROTTLE = 200; // ms
 
 class GameScene extends Phaser.Scene {
   constructor() { super({ key: "GameScene" }); }
@@ -35,13 +43,41 @@ class GameScene extends Phaser.Scene {
   update() {
     if (!player) return;
 
-    const { isMove } = handleMovement(cursors);
+    const { isMove, newX, newY, anim } = handleMovement(cursors);
     const now = performance.now();
+
+    // анимация движения
+    if (isMove && anim) {
+      if (player.anims.currentAnim?.key !== anim) player.play(anim, true);
+    } else {
+      player.anims.stop();
+    }
+
+    // отправка движения на сервер
     if (isMove && socket && now - lastMoveSent > MOVE_THROTTLE) {
-      socket.emit("move", { x: player.x, y: player.y });
+      socket.emit("move", { x: newX, y: newY, anim });
       lastMoveSent = now;
     }
 
+    // плавное движение всех игроков
+    const dt = this.game.loop.delta / 1000;
+    const speed = 200; // px/sec
+
+    function smoothMove(sprite: SmoothSprite) {
+      if (sprite.targetX === undefined || sprite.targetY === undefined) return;
+      const dx = sprite.targetX - sprite.x;
+      const dy = sprite.targetY - sprite.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 0.5) return;
+      const step = speed * dt;
+      sprite.x += dx / dist * Math.min(step, dist);
+      sprite.y += dy / dist * Math.min(step, dist);
+    }
+
+    smoothMove(player);
+    for (const id in otherPlayers) smoothMove(otherPlayers[id]);
+
+    // смена чанка
     this.checkChunkChange();
     drawMinimap([], Object.values(otherPlayers));
     updateHUD(currentChunkX, currentChunkY);
@@ -65,6 +101,7 @@ class GameScene extends Phaser.Scene {
       path: "/socket.io/",
       transports: ["websocket", "polling"]
     });
+
     socket.on("connect", () => {
       console.log("Socket connected", socket.id);
       socket.emit("join");
@@ -72,23 +109,54 @@ class GameScene extends Phaser.Scene {
     });
 
     socket.on("snapshot", (data: { players: Record<string, any>, chunks: any }) => {
+      const SNAPSHOT_INTERVAL = 200;
+
+      // игроки
       for (const id in data.players) {
         const p = data.players[id];
-        if (id === socket.id) { player.setPosition(p.x, p.y); continue; }
-        if (!otherPlayers[id]) otherPlayers[id] = this.add.sprite(p.x, p.y, "player", 0);
-        else otherPlayers[id].setPosition(p.x, p.y);
-      }
-      // удаляем игроков, которых нет
-      for (const id in otherPlayers) {
-        if (!data.players[id]) { otherPlayers[id].destroy(); delete otherPlayers[id]; }
-      }
-      if (Object.keys(data.chunks).length > 0) {
-        for (const chunkId of Object.keys(data.chunks)) {
-          const chunk = data.chunks[chunkId];
-          console.log(chunk)
-          if (chunk && chunkId !== "undefined_undefined") {
-            loadChunkFromServer(this, chunkId, chunk);
+        let sprite: SmoothSprite;
+
+        if (id === socket.id) sprite = player;
+        else {
+          if (!otherPlayers[id]) {
+            const s = this.add.sprite(p.x, p.y, "player") as SmoothSprite;
+            s.setScale(32 / PLAYER_WIDTH, 32 / PLAYER_HEIGHT);
+            s.setOrigin(0.5, 0.5);
+            s.setDepth(100);
+            otherPlayers[id] = s;
           }
+          sprite = otherPlayers[id];
+        }
+
+        // обновление целевых координат для плавного движения
+        sprite.targetX = p.x;
+        sprite.targetY = p.y;
+        sprite.fromX = sprite.x;
+        sprite.fromY = sprite.y;
+        sprite.startTime = performance.now();
+        sprite.duration = SNAPSHOT_INTERVAL;
+
+        if (p?.anim && p?.anim !== "") {
+          console.log(p)
+          sprite.play(p.anim, true);
+        } else {
+          sprite.anims.stop();
+        }
+      }
+
+      // удаляем несуществующих игроков
+      for (const id in otherPlayers) {
+        if (!data.players[id]) {
+          otherPlayers[id].destroy();
+          delete otherPlayers[id];
+        }
+      }
+
+      // чанки
+      for (const chunkId of Object.keys(data.chunks)) {
+        const chunk = data.chunks[chunkId];
+        if (chunk && chunkId !== "undefined_undefined" && !loadedChunks[chunkId]) {
+          loadChunkFromServer(this, chunkId, chunk);
         }
       }
     });

@@ -4,15 +4,27 @@ import { loadedChunks, CHUNK_SIZE } from "./chunkManager";
 export const PLAYER_WIDTH = 96;
 export const PLAYER_HEIGHT = 128;
 
-export let player!: Phaser.GameObjects.Sprite;
+export interface SmoothSprite extends Phaser.GameObjects.Sprite {
+  fromX?: number;
+  fromY?: number;
+  targetX?: number;
+  targetY?: number;
+  startTime?: number;
+  duration?: number;
+}
+
+export let player!: SmoothSprite;
 
 export function createPlayer(scene: Phaser.Scene, x: number, y: number) {
-  player = scene.add.sprite(x, y, "player");
+  player = scene.add.sprite(x, y, "player") as SmoothSprite;
   player.setScale(32 / PLAYER_WIDTH, 32 / PLAYER_HEIGHT);
   player.setOrigin(0.5, 0.5);
   player.setDepth(100);
+  player.targetX = x;
+  player.targetY = y;
   return player;
 }
+
 
 // модульная функция остатка
 function mod(n: number, m: number) {
@@ -21,7 +33,7 @@ function mod(n: number, m: number) {
 
 // движение с ограничением: нельзя по воде
 export function handleMovement(cursors: Phaser.Types.Input.Keyboard.CursorKeys) {
-  const speed = 2;
+  const speed = 15;
   let newX = player.x;
   let newY = player.y;
 
@@ -45,23 +57,13 @@ export function handleMovement(cursors: Phaser.Types.Input.Keyboard.CursorKeys) 
     const localY = mod(tileY, CHUNK_SIZE);
     const tileType = chunk.tileData[`${localX}_${localY}`];
 
-    if (!["water","shore_top","shore_bottom","shore_left","shore_right"].includes(tileType)) {
-      player.x = newX;
-      player.y = newY;
+    if (!["water", "shore_top", "shore_bottom", "shore_left", "shore_right"].includes(tileType)) {
+      return { isMove: moving, newX, newY, anim };
     }
   } else {
-    player.x = newX;
-    player.y = newY;
+    return { isMove: moving, newX, newY, anim };
   }
-
-  // анимация
-  if (moving && anim) {
-    if (player.anims.currentAnim?.key !== anim) player.play(anim, true);
-  } else {
-    player.anims.stop();
-  }
-
-  return { isMove: moving };
+  return { isMove: moving, newX, newY, anim };
 }
 
 export function createAnimations(scene: Phaser.Scene) {

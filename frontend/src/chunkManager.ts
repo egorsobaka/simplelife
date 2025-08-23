@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-export const CHUNK_SIZE = 40;
+export const CHUNK_SIZE = 20;
 
 export interface ChunkData {
   tiles: { x: number; y: number; type: string }[];
