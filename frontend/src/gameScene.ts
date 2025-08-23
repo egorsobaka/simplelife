@@ -4,7 +4,7 @@ import { player, createPlayer, createAnimations, PLAYER_WIDTH, PLAYER_HEIGHT, ty
 import { createHUD, updateHUD } from "./hud";
 import { createMinimap, drawMinimap } from "./minimap";
 import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, loadedChunks } from "./chunkManager";
-import { handleMovementJoystick } from "./movementHelper";
+import { handleMovementJoystick } from "./movementHelper.js";
 
 let currentChunkX = 0;
 let currentChunkY = 0;
