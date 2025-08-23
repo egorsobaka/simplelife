@@ -19,7 +19,7 @@ let cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
 let otherPlayers: Record<string, SmoothSprite> = {};
 let socket!: Socket;
 let lastMoveSent = 0;
-const MOVE_THROTTLE = 200; // ms
+const MOVE_THROTTLE = 100; // ms
 
 class GameScene extends Phaser.Scene {
   constructor() { super({ key: "GameScene" }); }
@@ -43,41 +43,55 @@ class GameScene extends Phaser.Scene {
   update() {
     if (!player) return;
 
+    const dt = this.game.loop.delta / 1000;
     const { isMove, newX, newY, anim } = handleMovement(cursors);
-    const now = performance.now();
 
-    // анимация движения
-    if (isMove && anim) {
-      if (player.anims.currentAnim?.key !== anim) player.play(anim, true);
+    // === локальное движение собственного игрока ===
+    if (isMove) {
+      player.x = newX;
+      player.y = newY;
+      if (anim && player.anims.currentAnim?.key !== anim) player.play(anim, true);
     } else {
       player.anims.stop();
     }
 
-    // отправка движения на сервер
+    // отправка позиции на сервер
+    const now = performance.now();
     if (isMove && socket && now - lastMoveSent > MOVE_THROTTLE) {
-      socket.emit("move", { x: newX, y: newY, anim });
+      socket.emit("move", { x: player.x, y: player.y, anim });
       lastMoveSent = now;
     }
 
-    // плавное движение всех игроков
-    const dt = this.game.loop.delta / 1000;
-    const speed = 200; // px/sec
+    // === плавная коррекция к серверной позиции собственного игрока ===
+    if (player.targetX !== undefined && player.targetY !== undefined) {
+      const dx = player.targetX - player.x;
+      const dy = player.targetY - player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const threshold = 4; // px, допустимая ошибка
+      const correctionSpeed = 100; // px/sec
 
+      if (dist > threshold) {
+        const step = correctionSpeed * dt;
+        player.x += dx / dist * Math.min(step, dist);
+        player.y += dy / dist * Math.min(step, dist);
+      }
+    }
+
+    // === плавное движение других игроков ===
     function smoothMove(sprite: SmoothSprite) {
       if (sprite.targetX === undefined || sprite.targetY === undefined) return;
       const dx = sprite.targetX - sprite.x;
       const dy = sprite.targetY - sprite.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const dist = Math.sqrt(dx*dx + dy*dy);
       if (dist < 0.5) return;
+      const speed = 200; // px/sec
       const step = speed * dt;
       sprite.x += dx / dist * Math.min(step, dist);
       sprite.y += dy / dist * Math.min(step, dist);
     }
 
-    smoothMove(player);
     for (const id in otherPlayers) smoothMove(otherPlayers[id]);
 
-    // смена чанка
     this.checkChunkChange();
     drawMinimap([], Object.values(otherPlayers));
     updateHUD(currentChunkX, currentChunkY);
@@ -111,7 +125,6 @@ class GameScene extends Phaser.Scene {
     socket.on("snapshot", (data: { players: Record<string, any>, chunks: any }) => {
       const SNAPSHOT_INTERVAL = 200;
 
-      // игроки
       for (const id in data.players) {
         const p = data.players[id];
         let sprite: SmoothSprite;
@@ -128,7 +141,7 @@ class GameScene extends Phaser.Scene {
           sprite = otherPlayers[id];
         }
 
-        // обновление целевых координат для плавного движения
+        // серверные координаты для плавной коррекции
         sprite.targetX = p.x;
         sprite.targetY = p.y;
         sprite.fromX = sprite.x;
@@ -136,15 +149,15 @@ class GameScene extends Phaser.Scene {
         sprite.startTime = performance.now();
         sprite.duration = SNAPSHOT_INTERVAL;
 
-        if (p?.anim && p?.anim !== "") {
-          console.log(p)
+        // серверная анимация
+        if (p?.anim && p.anim !== "" && (sprite.x !== p.x || sprite.y !== p.y)) {
           sprite.play(p.anim, true);
-        } else {
+        } else if (id !== socket.id) {
           sprite.anims.stop();
         }
       }
 
-      // удаляем несуществующих игроков
+      // удаляем отсутствующих игроков
       for (const id in otherPlayers) {
         if (!data.players[id]) {
           otherPlayers[id].destroy();

@@ -33,7 +33,7 @@ function mod(n: number, m: number) {
 
 // движение с ограничением: нельзя по воде
 export function handleMovement(cursors: Phaser.Types.Input.Keyboard.CursorKeys) {
-  const speed = 15;
+  const speed = 2;
   let newX = player.x;
   let newY = player.y;
 
