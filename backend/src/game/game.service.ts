@@ -34,33 +34,41 @@ export class GameService {
     }, 1000 * 3600 / 2);
   }
 
-
   onModuleDestroy() {
     if (this.itemSpawnInterval) clearInterval(this.itemSpawnInterval);
   }
+
   /**
-   * сетим ссылку на socket.io сервер из gateway
+   * Устанавливает ссылку на socket.io сервер из gateway.
    */
   setServer(server: Server) {
     this.server = server;
   }
 
   /**
-   * добавление игрока
+   * Добавляет нового игрока.
    */
   addPlayer(id: string) {
     this.players[id] = { id, x: 100, y: 100, anim: "", inventory: [] };
   }
 
   /**
-   * удаление игрока
+   * Удаляет игрока.
    */
   removePlayer(id: string) {
     delete this.players[id];
   }
+  
+  /**
+   * Возвращает данные игрока по ID.
+   * Возвращает null, если игрок не найден.
+   */
+  getPlayer(id: string): Player | null {
+    return this.players[id] || null;
+  }
 
   /**
-   * обновление позиции игрока с ограничением скорости
+   * Обновляет позицию игрока с ограничением скорости.
    */
   updatePosition(id: string, x: number, y: number, anim: string) {
     const player = this.players[id];
@@ -88,17 +96,54 @@ export class GameService {
   }
 
   /**
-   * возвращаем снимок состояния игры
+   * Возвращает снимок состояния игры.
    */
   getSnapshot() {
     return { players: this.players };
   }
 
   /**
-   * загрузка чанков вокруг игрока
+   * Загружает чанки вокруг игрока.
    */
   getChunks(cx: number, cy: number): Record<string, ChunkData> {
     return this.mapService.getChunksAround(cx, cy);
+  }
+
+  /**
+   * Новый метод для выбрасывания предметов из инвентаря на карту.
+   * Возвращает данные о выброшенном предмете или null.
+   */
+  dropItem(id: string, itemType: string) {
+    const player = this.players[id];
+    if (!player) return null;
+
+    const itemIndex = player.inventory.indexOf(itemType);
+    if (itemIndex === -1) {
+      console.log(`Игрок ${player.id} не может выбросить ${itemType}, его нет в инвентаре`);
+      return null;
+    }
+
+    player.inventory.splice(itemIndex, 1);
+
+    const tileX = Math.floor((player.x) / 32);
+    const tileY = Math.floor(player.y / 32);
+    const chunkX = Math.floor(tileX / 20);
+    const chunkY = Math.floor(tileY / 20);
+    const chunkKey = `${chunkX}_${chunkY}`;
+
+    const addedItem = this.mapService.addItemToMap(tileX, tileY, itemType);
+
+    if (addedItem) {
+      console.log(`Игрок ${player.id} выбросил ${itemType} в чанке ${chunkKey} на координатах ${addedItem.x}, ${addedItem.y}`);
+      return {
+        chunk: chunkKey,
+        x: addedItem.x,
+        y: addedItem.y,
+        type: addedItem.type,
+      };
+    }
+
+    return null;
   }
 
   private checkItemPickup(player: Player) {
@@ -114,35 +159,27 @@ export class GameService {
     const pickupRadius = 20; // пиксели
 
     const foundIndex = chunk.items.findIndex(item => {
-      // глобальные координаты предмета
       const globalX = (item.x + chunkX * 20) * 32 + 16;
       const globalY = (item.y + chunkY * 20) * 32 + 16;
-
-      // расстояние между игроком и предметом
       const dist = Math.hypot(player.x - globalX, player.y - globalY);
-
       return dist < pickupRadius;
     });
 
     if (foundIndex >= 0) {
       const item = chunk.items[foundIndex];
 
-      // добавить в инвентарь игроку
       player.inventory.push(item.type);
 
-      // удалить с карты
       chunk.items.splice(foundIndex, 1);
 
       console.log(`Игрок ${player.id} поднял ${item.type}`);
 
-      // уведомляем только игрока
       this.server.to(player.id).emit("itemPicked", {
         type: item.type,
         x: item.x,
         y: item.y,
       });
 
-      // уведомляем остальных игроков о том, что предмет исчез
       this.server.emit("itemRemoved", {
         chunk: chunkKey,
         x: item.x,
@@ -176,26 +213,21 @@ export class GameService {
     console.log(`Добавлено ${count} предметов на карту`);
   }
 
-
   private growTrees() {
     const chunkKeys = Object.keys(this.mapService['loadedChunks']);
     if (!chunkKeys.length) return;
 
     for (const chunkKey of chunkKeys) {
       const chunk = this.mapService['loadedChunks'][chunkKey];
-
-      // все деревья в чанке
       let trees = chunk.items.filter(i => i.type === "woodItem");
 
       if (!trees.length) continue;
 
-      // перемешиваем массив Фишера–Йетса
       for (let i = trees.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [trees[i], trees[j]] = [trees[j], trees[i]];
       }
 
-      // выбираем случайную часть (например, до половины деревьев)
       const count = Math.floor(trees.length * (0.3 + Math.random() * 0.2));
       trees = trees.slice(0, count);
 
@@ -230,7 +262,6 @@ export class GameService {
         }
       }
     }
-
     console.log("Деревья проверены на рост");
   }
 
@@ -240,23 +271,19 @@ export class GameService {
 
     for (const chunkKey of chunkKeys) {
       const chunk = this.mapService['loadedChunks'][chunkKey];
+      let stones = chunk.items.filter(i => i.type === "stoneItem");
 
-      // все деревья в чанке
-      let trees = chunk.items.filter(i => i.type === "stoneItem");
+      if (!stones.length) continue;
 
-      if (!trees.length) continue;
-
-      // перемешиваем массив Фишера–Йетса
-      for (let i = trees.length - 1; i > 0; i--) {
+      for (let i = stones.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [trees[i], trees[j]] = [trees[j], trees[i]];
+        [stones[i], stones[j]] = [stones[j], stones[i]];
       }
 
-      // выбираем случайную часть (например, до половины деревьев)
-      const count = Math.floor(trees.length * (0.3 + Math.random() * 0.2));
-      trees = trees.slice(0, count);
+      const count = Math.floor(stones.length * (0.3 + Math.random() * 0.2));
+      stones = stones.slice(0, count);
 
-      for (const tree of trees) {
+      for (const stone of stones) {
         const neighbors = [
           { dx: -1, dy: 0 },
           { dx: 1, dy: 0 },
@@ -265,8 +292,8 @@ export class GameService {
         ];
 
         for (const n of neighbors) {
-          const nx = tree.x + n.dx;
-          const ny = tree.y + n.dy;
+          const nx = stone.x + n.dx;
+          const ny = stone.y + n.dy;
 
           if (nx < 0 || nx >= 20 || ny < 0 || ny >= 20) continue;
 
@@ -287,10 +314,6 @@ export class GameService {
         }
       }
     }
-
     console.log("Деревья проверены на рост");
   }
-
-
-
 }

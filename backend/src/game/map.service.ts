@@ -10,6 +10,7 @@ export interface ChunkData {
 @Injectable()
 export class MapService {
   private loadedChunks: Record<string, ChunkData> = {};
+  private readonly CHUNK_SIZE_IN_TILES = 20; // 20x20, как в вашем коде
 
   generateMap(chunkX: number, chunkY: number): ChunkData {
     const key = `${chunkX}_${chunkY}`;
@@ -27,6 +28,8 @@ export class MapService {
 
   getChunk(chunkX: number, chunkY: number): ChunkData | null {
     const key = `${chunkX}_${chunkY}`;
+    // Используем `this.generateMap` для создания чанка, если он не существует.
+    // Это гарантирует, что мы всегда получим либо существующий, либо новый чанк.
     return this.loadedChunks[key] ?? this.generateMap(chunkX, chunkY);
   }
 
@@ -39,6 +42,38 @@ export class MapService {
       }
     }
     return chunks;
+  }
+
+  /**
+   * Добавляет предмет на карту в указанные тайловые координаты.
+   */
+  addItemToMap(x: number, y: number, itemType: string): { chunk: string, x: number, y: number, type: string } | null {
+    const chunkX = Math.floor(x / this.CHUNK_SIZE_IN_TILES);
+    const chunkY = Math.floor(y / this.CHUNK_SIZE_IN_TILES);
+    const key = `${chunkX}_${chunkY}`;
+
+    const chunk = this.getChunk(chunkX, chunkY);
+    if (!chunk) return null;
+
+    const tileXInChunk = x % this.CHUNK_SIZE_IN_TILES;
+    const tileYInChunk = y % this.CHUNK_SIZE_IN_TILES;
+
+    // Проверяем, не занят ли уже этот тайл
+    // const occupied = chunk.items.some(i => i.x === tileXInChunk && i.y === tileYInChunk);
+    // if (occupied) {
+    //   console.log(`Не удалось добавить предмет ${itemType} на координаты ${x}, ${y}: место занято.`);
+    //   return null;
+    // }
+
+    const newItem = { x: tileXInChunk, y: tileYInChunk + 1, type: itemType };
+    chunk.items.push(newItem);
+    
+    return {
+        chunk: key,
+        x: newItem.x,
+        y: newItem.y,
+        type: newItem.type
+    };
   }
 
   /**

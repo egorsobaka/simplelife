@@ -5,7 +5,7 @@ import { createMinimap, drawMinimap } from "./minimap";
 import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, loadedChunks, removeItemFromChunk } from "./chunkManager";
 import { handleMovementJoystick } from "./movementHelper.js";
 import socket from "./socket";
-import { InventoryScene } from "./inventoryScene"; // Импорт сцены инвентаря
+import { InventoryScene } from "./inventoryScene";
 
 let currentChunkX = 0;
 let currentChunkY = 0;
@@ -21,7 +21,7 @@ class GameScene extends Phaser.Scene {
   messagesContainer!: Phaser.GameObjects.Container;
   messages: Phaser.GameObjects.Text[] = [];
   messagesVisible = true;
-  inventory: { [key: string]: number } = {}; // Добавлено свойство для инвентаря
+  inventory: { [key: string]: number } = {};
 
   constructor() {
     super({ key: "GameScene" });
@@ -41,12 +41,12 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(player);
     this.cameras.main.setBounds(-Infinity, -Infinity, Infinity, Infinity);
 
-    this.scene.add("InventoryScene", InventoryScene); // Добавляем сцену инвентаря
+    this.scene.add("InventoryScene", InventoryScene);
     this.initSocket();
     this.createJoystick();
     this.createMessageWindow();
     this.createMessageToggleKey();
-    this.createInventoryButton(); // Создаем кнопку для инвентаря
+    this.createInventoryButton();
   }
 
   update() {
@@ -166,7 +166,6 @@ class GameScene extends Phaser.Scene {
     socket?.on("message", (msg: string) => this.addMessage(msg));
     socket?.on("itemPicked", (data: { type: string; x: number; y: number }) => {
       this.addMessage(`Вы подняли ${data.type}`);
-      // Добавляем предмет в инвентарь
       if (this.inventory[data.type]) {
         this.inventory[data.type]++;
       } else {
@@ -192,7 +191,6 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  // Новый метод для создания кнопки инвентаря
   createInventoryButton() {
     const invButton = this.add.text(
       this.scale.width - 10,
@@ -209,7 +207,7 @@ class GameScene extends Phaser.Scene {
       this.scene.pause("GameScene");
       const inventoryScene = this.scene.get("InventoryScene") as InventoryScene;
       if (inventoryScene) {
-        inventoryScene.inventoryItems = Object.entries(this.inventory).map(([type, count]) => ({ type, count }));
+        inventoryScene.setInventory(this.inventory); // Используем новый метод
         this.scene.launch("InventoryScene");
       }
     });
@@ -219,7 +217,7 @@ class GameScene extends Phaser.Scene {
         this.scene.pause("GameScene");
         const inventoryScene = this.scene.get("InventoryScene") as InventoryScene;
         if (inventoryScene) {
-          inventoryScene.inventoryItems = Object.entries(this.inventory).map(([type, count]) => ({ type, count }));
+          inventoryScene.setInventory(this.inventory);
           this.scene.launch("InventoryScene");
         }
       }
@@ -254,6 +252,29 @@ class GameScene extends Phaser.Scene {
       loadedChunk.items.push({ x, y, type });
 
       this.addMessage(`На карте появился ${type}`);
+    });
+
+    socket.on("itemDropped", (data: { chunk: string; x: number; y: number; type: string }) => {
+      const { chunk, x, y, type } = data;
+      this.addMessage(`На карте появился ${type}`);
+      // Если предмет находится в загруженном чанке, создаем его спрайт.
+      if (loadedChunks[chunk]) {
+        const loadedChunk = loadedChunks[chunk];
+        const [chunkX, chunkY] = chunk.split("_").map(Number);
+        const offsetX = chunkX * CHUNK_SIZE * 32;
+        const offsetY = chunkY * CHUNK_SIZE * 32;
+
+        const sprite = this.add.image(
+          offsetX + x * 32 + 16,
+          offsetY + y * 32 + 16,
+          "tiles",
+          getItemFrame(type)
+        ).setOrigin(0.5).setScale(32 / 16);
+
+        loadedChunk.itemSprites.push({ sprite, x, y, type });
+        if (!loadedChunk.items) loadedChunk.items = [];
+        loadedChunk.items.push({ x, y, type });
+      }
     });
 
     function getItemFrame(type: string): number {

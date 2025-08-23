@@ -17,7 +17,7 @@ import { MapService } from './map.service';
     methods: ['GET', 'POST'],
     credentials: true,
   },
-  path: '/socket.io', // чтобы совпадало с фронтендом
+  path: '/socket.io',
 })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -69,7 +69,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const chunks: Record<string, any> = {};
 
-    // отдаем чанки вокруг игрока 3x3
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         const x = data.cx + dx;
@@ -83,14 +82,36 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       players: this.gameService.getSnapshot().players,
       chunks,
     });
+  }
 
+  // Добавлен новый обработчик для выбрасывания предметов
+  @SubscribeMessage('dropItem')
+  handleDropItem(
+    @MessageBody() data: { itemType: string },
+    @ConnectedSocket() client: Socket
+  ) {
+    if (!data || typeof data.itemType !== 'string') return;
+
+    const clientId = client.id;
+    if (!clientId) return;
+
+    const playerState = this.gameService.getPlayer(clientId);
+    if (!playerState) return;
+
+    // Вызываем метод GameService для обработки логики
+    const droppedItem = this.gameService.dropItem(clientId, data.itemType);
+    
+    // Если предмет успешно выброшен, отправляем всем клиентам уведомление
+    if (droppedItem) {
+      this.server.emit('itemDropped', droppedItem);
+    }
   }
 
   private sendSnapshot(client: Socket) {
     const snapshot = this.gameService.getSnapshot();
     client.emit('snapshot', {
       players: snapshot.players,
-      chunks: {}, // пусто, фронт запросит чанки сам
+      chunks: {},
     });
   }
 
@@ -98,7 +119,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const snapshot = this.gameService.getSnapshot();
     this.server.emit('snapshot', {
       players: snapshot.players,
-      chunks: {}, // чанки не обновляем, их фронт запрашивает сам
+      chunks: {},
     });
   }
 }
