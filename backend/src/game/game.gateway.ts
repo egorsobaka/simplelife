@@ -47,7 +47,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('move')
   handleMove(
-    @MessageBody() data: { x: number; y: number },
+    @MessageBody() data: { x: number; y: number, anim: string },
     @ConnectedSocket() client: Socket
   ) {
     if (!data || typeof data.x !== 'number' || typeof data.y !== 'number') return;
@@ -55,7 +55,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const clientId = client.id;
     if (!clientId) return;
 
-    this.gameService.updatePosition(clientId, data.x, data.y);
+    this.gameService.updatePosition(clientId, data.x, data.y, data.anim);
     this.broadcastSnapshot();
   }
 
