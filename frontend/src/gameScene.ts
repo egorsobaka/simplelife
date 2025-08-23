@@ -55,7 +55,7 @@ class GameScene extends Phaser.Scene {
       this.joystickBase = this.add.circle(baseX, baseY, size, 0x0000ff, alpha).setScrollFactor(0);
       this.joystickThumb = this.add.circle(baseX, baseY, size/2, 0x00ff00, alpha).setScrollFactor(0).setInteractive();
 
-      this.joystickThumb.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      this.joystickThumb.on("pointerdown", () => {
         this.joystickThumb.setData("dragging", true);
       });
 
