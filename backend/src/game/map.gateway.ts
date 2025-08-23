@@ -7,7 +7,14 @@ import {
 import { Server } from 'socket.io';
 import { MapService } from './map.service';
 
-@WebSocketGateway({ cors: true })
+@WebSocketGateway({
+  cors: {
+    origin: ['https://game.almet22.ru'],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+  path: '/socket.io', // чтобы совпадало с фронтендом
+})
 export class MapGateway {
   @WebSocketServer()
   server: Server;

@@ -11,7 +11,14 @@ import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
 import { MapService } from './map.service';
 
-@WebSocketGateway({ cors: true })
+@WebSocketGateway({
+  cors: {
+    origin: ['https://game.almet22.ru'],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+  path: '/socket.io', // чтобы совпадало с фронтендом
+})
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
