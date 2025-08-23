@@ -1,0 +1,99 @@
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { GameService } from './game.service';
+import { MapService } from './map.service';
+
+@WebSocketGateway({ cors: true })
+export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  @WebSocketServer()
+  server: Server;
+
+  constructor(
+    private readonly gameService: GameService,
+    private readonly mapService: MapService
+  ) {}
+
+  handleConnection(@ConnectedSocket() client: Socket) {
+    const clientId = client.id;
+    if (!clientId) {
+      client.disconnect(true);
+      return;
+    }
+    this.gameService.addPlayer(clientId);
+    this.sendSnapshot(client);
+  }
+
+  handleDisconnect(@ConnectedSocket() client: Socket) {
+    const clientId = client.id;
+    if (!clientId) return;
+    this.gameService.removePlayer(clientId);
+    this.broadcastSnapshot();
+  }
+
+  @SubscribeMessage('move')
+  handleMove(
+    @MessageBody() data: { x: number; y: number },
+    @ConnectedSocket() client: Socket
+  ) {
+    if (!data || typeof data.x !== 'number' || typeof data.y !== 'number') return;
+
+    const clientId = client.id;
+    if (!clientId) return;
+
+    this.gameService.updatePosition(clientId, data.x, data.y);
+    this.broadcastSnapshot();
+  }
+
+  @SubscribeMessage('requestChunks')
+  handleRequestChunks(@MessageBody() data: { cx: number; cy: number }, @ConnectedSocket() client: Socket) {
+    if (!data || typeof data.cx !== 'number' || typeof data.cy !== 'number') return;
+
+    const chunks: Record<string, any> = {};
+
+    // отдаем чанки вокруг игрока 3x3
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const x = data.cx + dx;
+        const y = data.cy + dy;
+        const chunkData = this.mapService.generateMap(x, y);
+        chunks[`${x}_${y}`] = chunkData;
+      }
+    }
+
+    client.emit('snapshot', {
+      players: this.gameService.getSnapshot().players,
+      chunks,
+    });
+
+     client.emit('chunkData', {
+      x: data.cx,
+      y: data.cy,
+      chunks,
+    });
+
+  }
+
+  private sendSnapshot(client: Socket) {
+    const snapshot = this.gameService.getSnapshot();
+    client.emit('snapshot', {
+      players: snapshot.players,
+      chunks: {}, // пусто, фронт запросит чанки сам
+    });
+  }
+
+  private broadcastSnapshot() {
+    const snapshot = this.gameService.getSnapshot();
+    this.server.emit('snapshot', {
+      players: snapshot.players,
+      chunks: {}, // чанки не обновляем, их фронт запрашивает сам
+    });
+  }
+}
