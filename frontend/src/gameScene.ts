@@ -19,7 +19,9 @@ const mobileDir = { x: 0, y: 0 };
 class GameScene extends Phaser.Scene {
   joystickBase!: Phaser.GameObjects.Arc;
   joystickThumb!: Phaser.GameObjects.Arc;
+  messagesContainer!: Phaser.GameObjects.Container;
   messages: Phaser.GameObjects.Text[] = [];
+  messagesVisible = true;
 
   constructor() { super({ key: "GameScene" }); }
 
@@ -40,6 +42,7 @@ class GameScene extends Phaser.Scene {
     this.initSocket();
     this.createJoystick();
     this.createMessageWindow();
+    this.createMessageToggleKey();
   }
 
   update() {
@@ -111,7 +114,6 @@ class GameScene extends Phaser.Scene {
     }
   }
 
-  // создание джойстика
   createJoystick() {
     const size = 60;
     const alpha = 0.3;
@@ -147,53 +149,45 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  // Внутри createMessageWindow()
   createMessageWindow() {
     const x = 10;
     const y = 10;
     const width = 300;
-    const height = 100;
+    const height = 120;
 
-    const bg = this.add.rectangle(x, y, width, height, 0x000000, 0.5)
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(1000);
+    this.messagesContainer = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
 
-    const text = this.add.text(x + 5, y + 5, "", { fontSize: "14px", color: "#ffffff", wordWrap: { width: width - 10 } })
-      .setScrollFactor(0)
-      .setDepth(1001);
+    const bg = this.add.rectangle(x, y, width, height, 0x000000, 0.5).setOrigin(0, 0);
+    this.messagesContainer.add(bg);
 
+    const text = this.add.text(x + 5, y + 5, "", { fontSize: "14px", color: "#ffffff", wordWrap: { width: width - 10 } });
+    this.messagesContainer.add(text);
     this.messages.push(text);
 
-    // обработка сообщений от сервера
-    socket?.on("message", (msg: string) => {
-      this.addMessage(msg);
-    });
-
-    // обработка поднятия предмета игроком
-    socket?.on("itemPicked", (data: { type: string; x: number; y: number }) => {
-      this.addMessage(`Вы подняли ${data.type}`);
-    });
-
-    socket.on("itemRemoved", (data: { chunk: string; x: number; y: number }) => {
+    socket?.on("message", (msg: string) => this.addMessage(msg));
+    socket?.on("itemPicked", (data: { type: string; x: number; y: number }) => this.addMessage(`Вы подняли ${data.type}`));
+    socket?.on("itemRemoved", (data: { chunk: string; x: number; y: number }) => {
       removeItemFromChunk(data.chunk, data.x, data.y);
-      // при желании можно добавить сообщение в окно чата/HUD
-      const text = this.add.text(10, 10 + this.messages.length * 16, `Предмет исчез`, { fontSize: "14px", color: "#ffffff" })
-        .setScrollFactor(0)
-        .setDepth(1001);
-      this.messages.push(text);
+      this.addMessage(`Предмет исчез`);
     });
   }
 
-  // метод добавления сообщений в окно
   addMessage(msg: string) {
     const text = this.messages[0];
-    text.setText(msg + "\n" + text.text);
+    const MAX_LINES = 10;
+    const lines = [msg, ...text.text.split("\n").slice(0, MAX_LINES - 1)];
+    text.setText(lines.join("\n"));
   }
 
+  createMessageToggleKey() {
+    this.input!.keyboard!.on("keydown-M", () => {
+      this.messagesVisible = !this.messagesVisible;
+      this.messagesContainer.setVisible(this.messagesVisible);
+    });
+  }
 
   initSocket() {
-    socket = io("http://localhost:3000", { path: "/socket.io/", transports: ["websocket", "polling"] });
+    socket = io("https://game.almet22.ru", { path: "/socket.io/", transports: ["websocket", "polling"] });
 
     socket.on("connect", () => {
       console.log("Socket connected", socket.id);
@@ -232,7 +226,6 @@ class GameScene extends Phaser.Scene {
         } else if (id !== socket.id) sprite.anims.stop();
       }
 
-      // удаляем отсутствующих игроков
       for (const id in otherPlayers) {
         if (!data.players[id]) {
           otherPlayers[id].destroy();
@@ -240,7 +233,6 @@ class GameScene extends Phaser.Scene {
         }
       }
 
-      // загрузка чанков
       for (const chunkId of Object.keys(data.chunks)) {
         const chunk = data.chunks[chunkId];
         if (chunk && chunkId !== "undefined_undefined" && !loadedChunks[chunkId]) {
