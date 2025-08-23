@@ -1,22 +1,21 @@
+// game.service.ts
 import { Injectable } from '@nestjs/common';
-import { TelegramService } from './telegram.service';
+import { MapService, ChunkData } from './map.service';
 
 interface Player {
   id: string;
   x: number;
   y: number;
-  lastNotification: number;
-  telegramId: string;
 }
 
 @Injectable()
 export class GameService {
   private players: Record<string, Player> = {};
 
-  constructor(private readonly telegramService: TelegramService) {}
+  constructor(private readonly mapService: MapService) {}
 
-  addPlayer(id: string, telegramId: string) {
-    this.players[id] = { id, x: 100, y: 100, lastNotification: 0, telegramId };
+  addPlayer(id: string) {
+    this.players[id] = { id, x: 100, y: 100 };
   }
 
   removePlayer(id: string) {
@@ -28,23 +27,15 @@ export class GameService {
     if (!player) return;
     player.x = x;
     player.y = y;
-    this.checkMeetings(player);
   }
 
   getSnapshot() {
-    return this.players;
+    return {
+      players: this.players,
+    };
   }
 
-  private checkMeetings(player: Player) {
-    const now = Date.now();
-    Object.values(this.players).forEach(other => {
-      if (other.id === player.id) return;
-      const dist = Math.hypot(player.x - other.x, player.y - other.y);
-      if (dist < 50 && now - Math.max(player.lastNotification, other.lastNotification) > 60000) {
-        this.telegramService.notifyPlayers(player.telegramId, other.telegramId);
-        player.lastNotification = now;
-        other.lastNotification = now;
-      }
-    });
+  getChunks(cx: number, cy: number): Record<string, ChunkData> {
+    return this.mapService.getChunksAround(cx, cy);
   }
 }

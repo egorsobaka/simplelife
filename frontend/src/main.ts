@@ -3,8 +3,8 @@ import GameScene from "./GameScene";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: 1200,
-  height: 1400,
+  width: 640,
+  height: 640,
   pixelArt: true,
   scene: [GameScene],
   physics: {

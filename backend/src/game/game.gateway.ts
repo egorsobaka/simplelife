@@ -9,41 +9,33 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
+import { MapService } from './map.service';
 
 @WebSocketGateway({ cors: true })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly gameService: GameService) {}
+  constructor(
+    private readonly gameService: GameService,
+    private readonly mapService: MapService
+  ) {}
 
   handleConnection(@ConnectedSocket() client: Socket) {
-    try {
-      const clientId = client.id;
-      if (!clientId) {
-        console.warn('Некорректный client.id при подключении:', client.id);
-        client.disconnect(true);
-        return;
-      }
-
-      this.gameService.addPlayer(clientId, clientId);
-      this.broadcast();
-    } catch (err) {
-      console.error('Ошибка при подключении клиента:', err);
+    const clientId = client.id;
+    if (!clientId) {
       client.disconnect(true);
+      return;
     }
+    this.gameService.addPlayer(clientId);
+    this.sendSnapshot(client);
   }
 
   handleDisconnect(@ConnectedSocket() client: Socket) {
-    try {
-      const clientId = client.id;
-      if (!clientId) {
-        this.gameService.removePlayer(clientId);
-        this.broadcast();
-      }
-    } catch (err) {
-      console.error('Ошибка при отключении клиента:', err);
-    }
+    const clientId = client.id;
+    if (!clientId) return;
+    this.gameService.removePlayer(clientId);
+    this.broadcastSnapshot();
   }
 
   @SubscribeMessage('move')
@@ -51,33 +43,57 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { x: number; y: number },
     @ConnectedSocket() client: Socket
   ) {
-    try {
-      if (!data || typeof data.x !== 'number' || typeof data.y !== 'number') {
-        console.warn('Некорректные данные движения:', data);
-        return;
-      }
+    if (!data || typeof data.x !== 'number' || typeof data.y !== 'number') return;
 
-      const clientId = client.id;
-      if (!clientId) return;
+    const clientId = client.id;
+    if (!clientId) return;
 
-      this.gameService.updatePosition(clientId, data.x, data.y);
-      this.broadcast();
-    } catch (err) {
-      console.error('Ошибка в handleMove:', err);
-      client.emit('error', { message: 'Ошибка при обработке движения' });
-    }
+    this.gameService.updatePosition(clientId, data.x, data.y);
+    this.broadcastSnapshot();
   }
 
-  private broadcast() {
-    try {
-      const snapshot = this.gameService.getSnapshot();
-      if (!snapshot || typeof snapshot !== 'object') {
-        console.warn('Некорректный snapshot для рассылки:', snapshot);
-        return;
+  @SubscribeMessage('requestChunks')
+  handleRequestChunks(@MessageBody() data: { cx: number; cy: number }, @ConnectedSocket() client: Socket) {
+    if (!data || typeof data.cx !== 'number' || typeof data.cy !== 'number') return;
+
+    const chunks: Record<string, any> = {};
+
+    // отдаем чанки вокруг игрока 3x3
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const x = data.cx + dx;
+        const y = data.cy + dy;
+        const chunkData = this.mapService.generateMap(x, y);
+        chunks[`${x}_${y}`] = chunkData;
       }
-      this.server.emit('snapshot', snapshot);
-    } catch (err) {
-      console.error('Ошибка при broadcast:', err);
     }
+
+    client.emit('snapshot', {
+      players: this.gameService.getSnapshot().players,
+      chunks,
+    });
+
+     client.emit('chunkData', {
+      x: data.cx,
+      y: data.cy,
+      chunks,
+    });
+
+  }
+
+  private sendSnapshot(client: Socket) {
+    const snapshot = this.gameService.getSnapshot();
+    client.emit('snapshot', {
+      players: snapshot.players,
+      chunks: {}, // пусто, фронт запросит чанки сам
+    });
+  }
+
+  private broadcastSnapshot() {
+    const snapshot = this.gameService.getSnapshot();
+    this.server.emit('snapshot', {
+      players: snapshot.players,
+      chunks: {}, // чанки не обновляем, их фронт запрашивает сам
+    });
   }
 }
