@@ -73,13 +73,33 @@ export function generateMap(
 
   chunkRivers[`${chunkX}_${chunkY}`] = { positions: riverPositions };
 
+  // === мостик из песка ===
+  const bridgeX = Math.floor(Math.random() * MAP_WIDTH);
+  const bridgeY = riverPositions[bridgeX];
+
+  if (bridgeY > 0 && bridgeY < MAP_HEIGHT - 1) {
+    safeSetTile(mapArr, bridgeX, bridgeY - 2, "sand");
+    safeSetTile(mapArr, bridgeX, bridgeY - 1, "sand");
+    safeSetTile(mapArr, bridgeX, bridgeY, "sand");
+    safeSetTile(mapArr, bridgeX, bridgeY + 1, "sand");
+    safeSetTile(mapArr, bridgeX, bridgeY + 2, "sand");
+  }
+
   // камни
   for (let i = 0; i < 5; i++) {
     let gx = Math.floor(Math.random() * MAP_WIDTH);
     let gy = Math.floor(Math.random() * MAP_HEIGHT);
     for (let len = 0; len < 8; len++) {
-      if (gx >= 0 && gy >= 0 && gx < MAP_WIDTH && gy < MAP_HEIGHT) {
-        safeSetTile(mapArr, gx, gy, "stone");
+      if (gy >= 0 && gx >= 0 && gy < MAP_HEIGHT && gx < MAP_WIDTH) {
+        if (mapArr[gy][gx].type !== "water") {
+          safeSetTile(mapArr, gx, gy, "stone");
+        }
+        if (gx + 1 < MAP_WIDTH && mapArr[gy][gx + 1].type !== "water") {
+          safeSetTile(mapArr, gx + 1, gy, "stone");
+        }
+        if (gy + 1 < MAP_HEIGHT && mapArr[gy + 1][gx].type !== "water") {
+          safeSetTile(mapArr, gx, gy + 1, "stone");
+        }
       }
       gx += Math.floor(Math.random() * 3) - 1;
       gy += Math.floor(Math.random() * 3) - 1;
@@ -100,19 +120,17 @@ export function generateMap(
 
   // пучки предметов (2x2) по 4 на чанк
   let clustersPlaced = 0;
-  const itemTypes = ['woodItem', 'stoneItem', 'eggItem'];
+  const itemTypes = ["woodItem", "stoneItem", "eggItem"];
   while (clustersPlaced < 4) {
     const x = Math.floor(Math.random() * (MAP_WIDTH - 1));
     const y = Math.floor(Math.random() * (MAP_HEIGHT - 1));
 
-    // проверяем, что все 4 клетки травяные
     if (
       mapArr[y][x].type === "grass" &&
       mapArr[y][x + 1].type === "grass" &&
       mapArr[y + 1][x].type === "grass" &&
       mapArr[y + 1][x + 1].type === "grass"
     ) {
-      // размещаем предметы в каждой из 4 клеток
       itemsArr.push({ x, y, type: itemTypes[Math.floor(Math.random() * itemTypes.length)] });
       itemsArr.push({ x: x + 1, y, type: itemTypes[Math.floor(Math.random() * itemTypes.length)] });
       itemsArr.push({ x, y: y + 1, type: itemTypes[Math.floor(Math.random() * itemTypes.length)] });
@@ -130,8 +148,8 @@ export function generateMap(
           Math.random() < 0.33
             ? "woodItem"
             : Math.random() < 0.5
-            ? "stoneItem"
-            : "eggItem";
+              ? "stoneItem"
+              : "eggItem";
         itemsArr.push({ x, y, type: itemType });
       }
     }

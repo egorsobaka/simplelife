@@ -70,6 +70,7 @@ function getTileFrame(type: string): number {
     water: 0,
     tree: 66,
     stone: 7,
+    sand: 6,
     shore_top: 3,
     shore_bottom: 117,
     shore_left: 60,
@@ -83,7 +84,7 @@ function getItemFrame(type: string): number {
   const ITEM_INDEX: Record<string, number> = {
     woodItem: 526,
     eggItem: 563,
-    stoneItem: 210,
+    stoneItem: 692,
   };
   return ITEM_INDEX[type] ?? 0;
 }

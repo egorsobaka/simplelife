@@ -151,7 +151,7 @@ class GameScene extends Phaser.Scene {
     const x = 10;
     const y = 10;
     const width = 300;
-    const height = 120;
+    const height = 150;
 
     this.messagesContainer = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
 
@@ -166,7 +166,6 @@ class GameScene extends Phaser.Scene {
     socket?.on("itemPicked", (data: { type: string; x: number; y: number }) => this.addMessage(`Вы подняли ${data.type}`));
     socket?.on("itemRemoved", (data: { chunk: string; x: number; y: number }) => {
       removeItemFromChunk(data.chunk, data.x, data.y);
-      this.addMessage(`Предмет исчез`);
     });
   }
 

@@ -21,15 +21,17 @@ export class GameService {
   constructor(private readonly mapService: MapService) { }
 
   onModuleInit() {
-    // каждые 100 секунд добавляем 100 предметов
     setInterval(() => {
       this.spawnRandomItems(10);
     }, 100000);
 
-    // каждые 30 секунд проверяем рост деревьев
     setInterval(() => {
       this.growTrees();
     }, 60000);
+
+    setInterval(() => {
+      this.growStones();
+    }, 120000);
   }
 
 
@@ -149,41 +151,6 @@ export class GameService {
     }
   }
 
-  private spawnTreeInChunk(chunk: ChunkData, chunkKey: string, x: number, y: number) {
-    const tile = chunk.tiles[y]?.[x];
-    if (!tile || tile.type !== "grass") return false;
-
-    const neighbors = [
-      { dx: -1, dy: 0 },
-      { dx: 1, dy: 0 },
-      { dx: 0, dy: -1 },
-      { dx: 0, dy: 1 },
-    ];
-
-    const existingTrees = chunk.items.filter(item => item.type === 'tree');
-
-    let canSpawnTree = false;
-    for (const tree of existingTrees) {
-      for (const n of neighbors) {
-        const nx = tree.x + n.dx;
-        const ny = tree.y + n.dy;
-        if (nx === x && ny === y) {
-          canSpawnTree = true;
-          break;
-        }
-      }
-      if (canSpawnTree) break;
-    }
-
-    if (canSpawnTree) {
-      chunk.items.push({ x, y, type: "tree" });
-      this.server?.emit("itemAdded", { chunk: chunkKey, x, y, type: "tree" });
-      return true;
-    }
-
-    return false;
-  }
-
   private spawnRandomItems(count: number) {
     const chunkKeys = Object.keys(this.mapService['loadedChunks']);
     if (!chunkKeys.length) return;
@@ -257,6 +224,63 @@ export class GameService {
                 x: nx,
                 y: ny,
                 type: "woodItem",
+              });
+            }
+          }
+        }
+      }
+    }
+
+    console.log("Деревья проверены на рост");
+  }
+
+  private growStones() {
+    const chunkKeys = Object.keys(this.mapService['loadedChunks']);
+    if (!chunkKeys.length) return;
+
+    for (const chunkKey of chunkKeys) {
+      const chunk = this.mapService['loadedChunks'][chunkKey];
+
+      // все деревья в чанке
+      let trees = chunk.items.filter(i => i.type === "stoneItem");
+
+      if (!trees.length) continue;
+
+      // перемешиваем массив Фишера–Йетса
+      for (let i = trees.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [trees[i], trees[j]] = [trees[j], trees[i]];
+      }
+
+      // выбираем случайную часть (например, до половины деревьев)
+      const count = Math.floor(trees.length * (0.3 + Math.random() * 0.2));
+      trees = trees.slice(0, count);
+
+      for (const tree of trees) {
+        const neighbors = [
+          { dx: -1, dy: 0 },
+          { dx: 1, dy: 0 },
+          { dx: 0, dy: -1 },
+          { dx: 0, dy: 1 },
+        ];
+
+        for (const n of neighbors) {
+          const nx = tree.x + n.dx;
+          const ny = tree.y + n.dy;
+
+          if (nx < 0 || nx >= 20 || ny < 0 || ny >= 20) continue;
+
+          const tile = chunk.tiles[ny]?.[nx];
+          const occupied = chunk.items.some(i => i.x === nx && i.y === ny);
+
+          if (tile?.type === "stone" && !occupied) {
+            if (Math.random() < 0.3) {
+              chunk.items.push({ x: nx, y: ny, type: "stoneItem" });
+              this.server?.emit("itemAdded", {
+                chunk: chunkKey,
+                x: nx,
+                y: ny,
+                type: "stoneItem",
               });
             }
           }
