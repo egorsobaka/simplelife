@@ -80,12 +80,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       chunks,
     });
 
-     client.emit('chunkData', {
-      x: data.cx,
-      y: data.cy,
-      chunks,
-    });
-
   }
 
   private sendSnapshot(client: Socket) {

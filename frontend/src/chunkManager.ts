@@ -30,7 +30,7 @@ export function loadChunkFromServer(scene: Phaser.Scene, key: string, data: Chun
   const tileData: Record<string, string> = {};
   (data.tiles as any[]).forEach((row, y) => {
     if (Array.isArray(row)) {
-      row.forEach((type, x) => {
+      row.forEach(({type}, x) => {
         const sprite = scene.add.image(
           offsetX + x * 32,
           offsetY + y * 32,
