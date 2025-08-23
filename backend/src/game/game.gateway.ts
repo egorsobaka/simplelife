@@ -26,7 +26,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly gameService: GameService,
     private readonly mapService: MapService
-  ) {}
+  ) { }
+
+  afterInit(server: Server) {
+    this.gameService.setServer(server);
+  }
 
   handleConnection(@ConnectedSocket() client: Socket) {
     const clientId = client.id;

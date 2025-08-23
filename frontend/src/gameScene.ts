@@ -3,7 +3,7 @@ import { io, Socket } from "socket.io-client";
 import { player, createPlayer, createAnimations, PLAYER_WIDTH, PLAYER_HEIGHT, type SmoothSprite } from "./playerController";
 import { createHUD, updateHUD } from "./hud";
 import { createMinimap, drawMinimap } from "./minimap";
-import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, loadedChunks } from "./chunkManager";
+import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, loadedChunks, removeItemFromChunk } from "./chunkManager";
 import { handleMovementJoystick } from "./movementHelper.js";
 
 let currentChunkX = 0;
@@ -147,25 +147,53 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  // окно сообщений
+  // Внутри createMessageWindow()
   createMessageWindow() {
     const x = 10;
     const y = 10;
     const width = 300;
     const height = 100;
 
-    this.add.rectangle(x, y, width, height, 0x000000, 0.5).setOrigin(0, 0).setScrollFactor(0).setDepth(1000);
-    const text = this.add.text(x + 5, y + 5, "", { fontSize: "14px", color: "#ffffff" }).setScrollFactor(0).setDepth(1001);
+    const bg = this.add.rectangle(x, y, width, height, 0x000000, 0.5)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(1000);
+
+    const text = this.add.text(x + 5, y + 5, "", { fontSize: "14px", color: "#ffffff", wordWrap: { width: width - 10 } })
+      .setScrollFactor(0)
+      .setDepth(1001);
+
     this.messages.push(text);
 
-    // пример получения сообщений
+    // обработка сообщений от сервера
     socket?.on("message", (msg: string) => {
-      text.setText(msg);
+      this.addMessage(msg);
+    });
+
+    // обработка поднятия предмета игроком
+    socket?.on("itemPicked", (data: { type: string; x: number; y: number }) => {
+      this.addMessage(`Вы подняли ${data.type}`);
+    });
+
+    socket.on("itemRemoved", (data: { chunk: string; x: number; y: number }) => {
+      removeItemFromChunk(data.chunk, data.x, data.y);
+      // при желании можно добавить сообщение в окно чата/HUD
+      const text = this.add.text(10, 10 + this.messages.length * 16, `Предмет исчез`, { fontSize: "14px", color: "#ffffff" })
+        .setScrollFactor(0)
+        .setDepth(1001);
+      this.messages.push(text);
     });
   }
 
+  // метод добавления сообщений в окно
+  addMessage(msg: string) {
+    const text = this.messages[0];
+    text.setText(msg + "\n" + text.text);
+  }
+
+
   initSocket() {
-    socket = io("https://game.almet22.ru", { path: "/socket.io/", transports: ["websocket", "polling"] });
+    socket = io("http://localhost:3000", { path: "/socket.io/", transports: ["websocket", "polling"] });
 
     socket.on("connect", () => {
       console.log("Socket connected", socket.id);

@@ -9,7 +9,7 @@ export interface ChunkData {
 
 export interface Chunk {
   tileSprites: Phaser.GameObjects.Image[];
-  itemSprites: Phaser.GameObjects.Image[];
+  itemSprites: { sprite: Phaser.GameObjects.Image; x: number; y: number; type: string }[];
   tileData: Record<string, string>; // key = `${x}_${y}`, value = type
 }
 
@@ -28,9 +28,10 @@ export function loadChunkFromServer(scene: Phaser.Scene, key: string, data: Chun
 
   const tileSprites: Phaser.GameObjects.Image[] = [];
   const tileData: Record<string, string> = {};
+
   (data.tiles as any[]).forEach((row, y) => {
     if (Array.isArray(row)) {
-      row.forEach(({type}, x) => {
+      row.forEach(({ type }, x) => {
         const sprite = scene.add.image(
           offsetX + x * 32,
           offsetY + y * 32,
@@ -46,12 +47,12 @@ export function loadChunkFromServer(scene: Phaser.Scene, key: string, data: Chun
   });
 
   // Предметы
-  const itemSprites: Phaser.GameObjects.Image[] = [];
+  const itemSprites: { sprite: Phaser.GameObjects.Image; x: number; y: number; type: string }[] = [];
   data.items.forEach(i => {
     const sprite = scene.add.image(offsetX + i.x * 32 + 16, offsetY + i.y * 32 + 16, "tiles", getItemFrame(i.type))
       .setOrigin(0.5)
       .setScale(32 / 16);
-    itemSprites.push(sprite);
+    itemSprites.push({ sprite, x: i.x, y: i.y, type: i.type });
   });
 
   loadedChunks[key] = { tileSprites, itemSprites, tileData };
@@ -92,8 +93,21 @@ export function unloadFarChunks(currentChunkX: number, currentChunkY: number) {
     if (Math.abs(cx - currentChunkX) > 1 || Math.abs(cy - currentChunkY) > 1) {
       const chunk = loadedChunks[key];
       chunk.tileSprites.forEach(t => t.destroy());
-      chunk.itemSprites.forEach(i => i.destroy());
+      chunk.itemSprites.forEach(i => i.sprite.destroy());
       delete loadedChunks[key];
     }
   });
+}
+
+/**
+ * Удаление предмета с карты по координатам
+ */
+export function removeItemFromChunk(chunkKey: string, x: number, y: number) {
+  const chunk = loadedChunks[chunkKey];
+  if (!chunk) return;
+  const idx = chunk.itemSprites.findIndex(i => i.x === x && i.y === y);
+  if (idx >= 0) {
+    chunk.itemSprites[idx].sprite.destroy();
+    chunk.itemSprites.splice(idx, 1);
+  }
 }
