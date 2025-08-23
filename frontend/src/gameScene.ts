@@ -62,7 +62,7 @@ class GameScene extends Phaser.Scene {
 
   initSocket() {
     socket = io("https://game.almet22.ru", {
-      path: "/socket.io",
+      path: "/api/socket.io/",
       transports: ["websocket", "polling"]
     });
     socket.on("connect", () => {
