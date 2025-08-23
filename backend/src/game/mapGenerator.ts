@@ -67,10 +67,7 @@ export function generateMap(
 
     riverPositions.push(center);
 
-    // немного смещаем русло
-    if (Math.random() < 0.4) {
-      ry += Math.floor(Math.random() * 3) - 1;
-    }
+    if (Math.random() < 0.4) ry += Math.floor(Math.random() * 3) - 1;
     ry = Math.max(1, Math.min(MAP_HEIGHT - 2, ry));
   }
 
@@ -101,11 +98,35 @@ export function generateMap(
     }
   }
 
-  // предметы на траве
+  // пучки предметов (2x2) по 4 на чанк
+  let clustersPlaced = 0;
+  const itemTypes = ['woodItem', 'stoneItem', 'eggItem'];
+  while (clustersPlaced < 4) {
+    const x = Math.floor(Math.random() * (MAP_WIDTH - 1));
+    const y = Math.floor(Math.random() * (MAP_HEIGHT - 1));
+
+    // проверяем, что все 4 клетки травяные
+    if (
+      mapArr[y][x].type === "grass" &&
+      mapArr[y][x + 1].type === "grass" &&
+      mapArr[y + 1][x].type === "grass" &&
+      mapArr[y + 1][x + 1].type === "grass"
+    ) {
+      // размещаем предметы в каждой из 4 клеток
+      itemsArr.push({ x, y, type: itemTypes[Math.floor(Math.random() * itemTypes.length)] });
+      itemsArr.push({ x: x + 1, y, type: itemTypes[Math.floor(Math.random() * itemTypes.length)] });
+      itemsArr.push({ x, y: y + 1, type: itemTypes[Math.floor(Math.random() * itemTypes.length)] });
+      itemsArr.push({ x: x + 1, y: y + 1, type: itemTypes[Math.floor(Math.random() * itemTypes.length)] });
+
+      clustersPlaced++;
+    }
+  }
+
+  // случайные предметы на траве
   for (let y = 0; y < MAP_HEIGHT; y++) {
     for (let x = 0; x < MAP_WIDTH; x++) {
       if (mapArr[y][x].type === "grass" && Math.random() < 0.05) {
-        let itemType =
+        const itemType =
           Math.random() < 0.33
             ? "woodItem"
             : Math.random() < 0.5

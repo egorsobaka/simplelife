@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { io, Socket } from "socket.io-client";
 import { player, createPlayer, createAnimations, PLAYER_WIDTH, PLAYER_HEIGHT, type SmoothSprite } from "./playerController";
-import { createHUD, updateHUD } from "./hud";
+import { createHUD } from "./hud";
 import { createMinimap, drawMinimap } from "./minimap";
 import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, loadedChunks, removeItemFromChunk } from "./chunkManager";
 import { handleMovementJoystick } from "./movementHelper.js";
@@ -98,7 +98,6 @@ class GameScene extends Phaser.Scene {
 
     this.checkChunkChange();
     drawMinimap([], Object.values(otherPlayers));
-    updateHUD(currentChunkX, currentChunkY);
   }
 
   checkChunkChange() {
@@ -187,13 +186,46 @@ class GameScene extends Phaser.Scene {
   }
 
   initSocket() {
-    socket = io("https://game.almet22.ru", { path: "/socket.io/", transports: ["websocket", "polling"] });
+    socket = io("http://localhost:3000", { path: "/socket.io/", transports: ["websocket", "polling"] });
 
     socket.on("connect", () => {
       console.log("Socket connected", socket.id);
       socket.emit("join");
       socket.emit("requestChunks", { cx: currentChunkX, cy: currentChunkY });
     });
+
+    socket.on("itemAdded", (data: { chunk: string; x: number; y: number; type: string }) => {
+      console.log("itemAdded", data)
+      const { chunk, x, y, type } = data;
+      if (!loadedChunks[chunk]) return;
+
+      const loadedChunk = loadedChunks[chunk];
+      const [chunkX, chunkY] = chunk.split("_").map(Number);
+      const offsetX = chunkX * CHUNK_SIZE * 32;
+      const offsetY = chunkY * CHUNK_SIZE * 32;
+
+      const sprite = this.add.image(
+        offsetX + x * 32 + 16,
+        offsetY + y * 32 + 16,
+        "tiles",
+        getItemFrame(type)
+      ).setOrigin(0.5).setScale(32 / 16);
+
+      loadedChunk.itemSprites.push({ sprite, x, y, type });
+      if (!loadedChunk.items) loadedChunk.items = [];
+      loadedChunk.items.push({ x, y, type });
+
+      this.addMessage(`На карте появился ${type}`);
+    });
+
+    function getItemFrame(type: string): number {
+      const ITEM_INDEX: Record<string, number> = {
+        woodItem: 526,
+        eggItem: 563,
+        stoneItem: 210,
+      };
+      return ITEM_INDEX[type] ?? 0;
+    }
 
     socket.on("snapshot", (data: { players: Record<string, any>, chunks: any }) => {
       const SNAPSHOT_INTERVAL = 200;

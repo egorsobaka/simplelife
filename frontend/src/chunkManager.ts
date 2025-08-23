@@ -11,7 +11,9 @@ export interface Chunk {
   tileSprites: Phaser.GameObjects.Image[];
   itemSprites: { sprite: Phaser.GameObjects.Image; x: number; y: number; type: string }[];
   tileData: Record<string, string>; // key = `${x}_${y}`, value = type
+  items: { x: number; y: number; type: string }[]; // добавили
 }
+
 
 export const loadedChunks: Record<string, Chunk> = {};
 
@@ -48,14 +50,16 @@ export function loadChunkFromServer(scene: Phaser.Scene, key: string, data: Chun
 
   // Предметы
   const itemSprites: { sprite: Phaser.GameObjects.Image; x: number; y: number; type: string }[] = [];
+  const items: { x: number; y: number; type: string }[] = [];
   data.items.forEach(i => {
     const sprite = scene.add.image(offsetX + i.x * 32 + 16, offsetY + i.y * 32 + 16, "tiles", getItemFrame(i.type))
       .setOrigin(0.5)
       .setScale(32 / 16);
     itemSprites.push({ sprite, x: i.x, y: i.y, type: i.type });
+    items.push({ x: i.x, y: i.y, type: i.type });
   });
 
-  loadedChunks[key] = { tileSprites, itemSprites, tileData };
+  loadedChunks[key] = { tileSprites, itemSprites, tileData, items };
   return loadedChunks[key];
 }
 
