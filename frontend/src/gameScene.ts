@@ -1,5 +1,4 @@
 import Phaser from "phaser";
-import { io, Socket } from "socket.io-client";
 import { player, createPlayer, createAnimations, PLAYER_WIDTH, PLAYER_HEIGHT, type SmoothSprite } from "./playerController";
 import { createHUD } from "./hud";
 import { createMinimap, drawMinimap } from "./minimap";
