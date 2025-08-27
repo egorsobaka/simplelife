@@ -12,10 +12,12 @@ export async function fetchCraftableItems(
   inventory: Record<string, number>,
   ownedItems: string[] = []
 ): Promise<CraftableItem[]> {
+  const tg = (window as any).Telegram?.WebApp;
+
   const response = await fetch((import.meta.env.VITE_SOCKET_URL as string) + "api/crafting/check", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ inventory, ownedItems })
+    body: JSON.stringify({ inventory, ownedItems, initData: tg.initData, })
   });
   const data: CraftableItem[] = await response.json();
   return data;
