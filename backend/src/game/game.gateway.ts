@@ -153,18 +153,23 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private verifyTelegramInitData(initData: string): boolean {
+    console.log("initData", initData);
     try {
       const urlParams = new URLSearchParams(initData);
       const hash = urlParams.get('hash');
+
+      console.log("hash", hash);
+
       if (!hash) return false;
 
-      // соберём строку data_check_string
       const dataCheckArr: string[] = [];
       urlParams.forEach((val, key) => {
         if (key !== 'hash') dataCheckArr.push(`${key}=${val}`);
       });
       dataCheckArr.sort();
       const dataCheckString = dataCheckArr.join('\n');
+
+      console.log("hmac", dataCheckString);
 
       const secretKey =
         createHash('sha256')
@@ -175,6 +180,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         createHmac('sha256', secretKey)
           .update(dataCheckString)
           .digest('hex');
+
+      console.log("hmac", hash);
 
       return hmac === hash;
     } catch (e) {
