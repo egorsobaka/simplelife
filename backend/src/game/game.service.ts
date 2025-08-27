@@ -234,8 +234,12 @@ export class GameService {
 
       console.log(`Игрок ${player.socketId} поднял ${item.type}`);
 
+      const itemsMap = {
+        "woodItem": "wood",
+      }
+
       this.server.to(player.socketId).emit("itemPicked", {
-        type: item.type,
+        type: itemsMap[item.type] || item.type,
         x: item.x,
         y: item.y,
       });

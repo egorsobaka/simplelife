@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprite Sheet Clicker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+    }
+
+    #sprite-sheet-container {
+      position: relative;
+      cursor: pointer;
+      border: 2px solid #333;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      margin-bottom: 20px;
+    }
+
+    #sprite-sheet {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    #result {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #333;
+      text-align: center;
+      background-color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .highlight-box {
+      position: absolute;
+      border: 2px solid red;
+      box-sizing: border-box;
+      pointer-events: none;
+      /* Prevents the box from interfering with clicks */
+      transition: all 0.1s ease;
+      opacity: 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Click on a Sprite!</h1>
+  <div id="sprite-sheet-container">
+    <img id="sprite-sheet" src="roguelikeSheet_transparent.png" alt="Roguelike Sprite Sheet">
+    <div id="highlight-box" class="highlight-box"></div>
+  </div>
+  <div id="result">Click on a sprite to see its index.</div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const spriteSheetImg = document.getElementById('sprite-sheet');
+      const resultDiv = document.getElementById('result');
+      const highlightBox = document.getElementById('highlight-box');
+
+      const SPRITE_SIZE = 17;
+      let spritesPerRow = 57;
+
+      // This ensures the image is loaded before we calculate dimensions.
+      spriteSheetImg.onload = () => {
+        const imgWidth = spriteSheetImg.offsetWidth;
+        spritesPerRow = Math.floor(imgWidth / SPRITE_SIZE);
+      };
+
+      // This is a fallback in case the onload event doesn't fire.
+      if (spriteSheetImg.complete) {
+        const imgWidth = spriteSheetImg.offsetWidth;
+        spritesPerRow = Math.floor(imgWidth / SPRITE_SIZE);
+      }
+
+      spriteSheetImg.addEventListener('click', (event) => {
+        // Get the coordinates relative to the image
+        const rect = spriteSheetImg.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        // Calculate the column and row of the clicked sprite
+        const col = Math.floor(x / SPRITE_SIZE);
+        const row = Math.floor(y / SPRITE_SIZE);
+
+        // Calculate the sprite index
+        let spriteIndex = (row * spritesPerRow) + col;
+
+        if (row > 0) {
+          spriteIndex+=row;
+        }
+
+        // Display the result
+        resultDiv.textContent = `Sprite Index: ${spriteIndex}`;
+
+        // Highlight the clicked sprite
+        highlightBox.style.width = `${SPRITE_SIZE}px`;
+        highlightBox.style.height = `${SPRITE_SIZE}px`;
+        highlightBox.style.left = `${(col) * SPRITE_SIZE}px`;
+        highlightBox.style.top = `${(row) * SPRITE_SIZE}px`;
+        highlightBox.style.opacity = '1';
+
+        // Hide the highlight box after a short delay
+        setTimeout(() => {
+          highlightBox.style.opacity = '0';
+        }, 900);
+      });
+    });
+  </script>
+</body>
+
+</html>

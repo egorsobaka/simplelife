@@ -63,30 +63,91 @@ export function loadChunkFromServer(scene: Phaser.Scene, key: string, data: Chun
   return loadedChunks[key];
 }
 
-// frame для тайлов
-function getTileFrame(type: string): number {
+// === frame для тайлов ===
+export function getTileFrame(type: string): number {
   const TILE_INDEX: Record<string, number> = {
-    grass: 5,
-    water: 0,
-    tree: 66,
-    stone: 7,
-    sand: 6,
+    // Вставьте сюда индексы для тайлов
+    grass: 5, // Например, это индекс для травы
+    water: 0, // Например, это индекс для воды
+    tree: 628, // Например, это индекс для дерева
+    stone: 7, // Например, это индекс для камня
+    sand: 8, // Например, это индекс для песка
     shore_top: 3,
     shore_bottom: 117,
     shore_left: 60,
     shore_right: 62,
+    forest: 66, // Например, это индекс для леса
+    rock: 233,
   };
-  return TILE_INDEX[type] ?? 5;
+  return TILE_INDEX[type] ?? 7;
 }
 
-// frame для предметов
-function getItemFrame(type: string): number {
+// === frame для предметов ===
+export function getItemFrame(type: string): number {
   const ITEM_INDEX: Record<string, number> = {
-    woodItem: 526,
-    eggItem: 563,
-    stoneItem: 692,
+    wood: 1307,
+    reed: 649,
+    hide: 140,
+    coal: 396,
+    fiber: 535,
+    herb: 592,
+    woodItem: 528,
+    stoneItem: 1034,
+    ironOre: 1251,
+    stone: 1016, // Например, это индекс для камня
+    eggItem: 563, // Например, это индекс для яйца
+    iron_ore: 1251, // Например, это индекс для железной руды
+    copper_ore: 1194, // Например, это индекс для медной руды
+    gold_ore: 615,
+    tin_ore: 602, // Например, это индекс для оловянной руды
+    sand: 603,
+    clay: 1137,
+    cotton: 606,
+    mashroom: 447,
+    deciduous_tree: 529,
+    bad_mashroom: 333,
+    salt: 611,
+    fish: 740,
+    plank: 613,
+    stick: 614,
+    rope: 615,
+    cloth: 616,
+    leather: 617,
+    iron_ingot: 618,
+    bronze_ingot: 619,
+    gold_ingot: 620,
+    glass: 621,
+    brick: 622,
+    paper: 623,
+    bowstring: 624,
+    sword: 625,
+    axe: 626,
+    bow: 627,
+    crossbow: 628,
+    shield: 629,
+    armor: 630,
+    helmet: 631,
+    pickaxe: 632,
+    hammer: 633,
+    torch: 634,
+    lantern: 635,
+    furnace: 636,
+    anvil: 637,
+    bed: 638,
+    table: 639,
+    chair: 640,
+    bottle: 641,
+    pottery: 642,
+    book: 643,
+    map: 644,
+    ring: 645,
+    amulet: 646,
+    potion: 647,
+    bread: 648,
+    meat_stew: 649,
+    shell: 562,
   };
-  return ITEM_INDEX[type] ?? 0;
+  return ITEM_INDEX[type] ?? 28;
 }
 
 /**

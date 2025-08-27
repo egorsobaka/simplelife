@@ -2,10 +2,11 @@ import Phaser from "phaser";
 import { player, createPlayer, createAnimations, PLAYER_WIDTH, PLAYER_HEIGHT, type SmoothSprite } from "./playerController";
 import { createHUD } from "./hud";
 import { createMinimap, drawMinimap } from "./minimap";
-import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, loadedChunks, removeItemFromChunk } from "./chunkManager";
+import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, loadedChunks, removeItemFromChunk, getItemFrame } from "./chunkManager";
 import { handleMovementJoystick } from "./movementHelper.js";
 import { initSocket, socket } from "./socket";
 import { InventoryScene } from "./inventoryScene";
+import { fetchCraftableItems } from "./craftingAPI.js";
 declare global {
   interface Window {
     Telegram?: any;
@@ -55,7 +56,98 @@ class GameScene extends Phaser.Scene {
     this.createMessageWindow();
     this.createMessageToggleKey();
     this.createInventoryButton();
+    this.createCraftButton();
     this.initSocket();
+  }
+
+  createCraftButton() {
+    const craftButton = this.add.text(
+      this.scale.width - 10,
+      60,
+      "⚒️ Крафт",
+      { fontSize: "24px", backgroundColor: "#333", padding: { x: 10, y: 5 } }
+    )
+      .setScrollFactor(0)
+      .setInteractive()
+      .setOrigin(1, 0)
+      .setDepth(1000);
+
+    craftButton.on("pointerdown", async () => {
+      const craftableItems = await fetchCraftableItems(this.inventory, Object.keys(this.inventory));
+      this.showCraftingGrid(craftableItems);
+    });
+  }
+
+  // метод для отображения грида крафтинга
+  showCraftingGrid(craftableItems: any[]) {
+    const gridGroup = this.add.group();
+    const cols = 5; // количество колонок
+    const spriteSize = 48;
+    const padding = 10;
+    const startX = 100;
+    const startY = 100;
+
+    // фильтруем только то, что реально крафтится
+    const craftables = craftableItems.filter(item => item.craftable);
+
+    craftables.forEach((item, index) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+
+      const x = startX + col * (spriteSize + padding);
+      const y = startY + row * (spriteSize + padding);
+
+      // берём фрейм по типу предмета
+      const frame = getItemFrame(item.name);
+
+      const sprite = this.add.sprite(x, y, "itemsAtlas", frame)
+        .setInteractive()
+        .setScrollFactor(0)
+        .setDepth(2000)
+        .setScale(1.2);
+
+      // подпись под предметом
+      const label = this.add.text(x, y + spriteSize / 2 + 8, item.title, {
+        fontSize: "14px",
+        color: "#fff",
+        backgroundColor: "rgba(0,0,0,0.6)",
+        padding: { x: 4, y: 2 }
+      })
+        .setOrigin(0.5, 0)
+        .setScrollFactor(0)
+        .setDepth(2000);
+
+      // обработка клика по предмету
+      sprite.on("pointerdown", async () => {
+        try {
+          const tg = (window as any).Telegram?.WebApp;
+
+          const response = await fetch(`${import.meta.env.VITE_SOCKET_URL}api/crafting/craft`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              itemName: item.name,
+              inventory: this.inventory,
+              ownedItems: Object.keys(this.inventory),
+              initData: tg.initData,
+            }),
+          });
+          const result = await response.json();
+
+          if (result.success) {
+            this.addMessage(`✅ Создан предмет: ${item.title}`);
+            gridGroup.clear(true, true);
+          } else {
+            this.addMessage(`❌ Не удалось скрафтить: ${item.title}`);
+          }
+        } catch (e) {
+          console.error(e);
+          this.addMessage(`⚠️ Ошибка при крафте: ${item.title}`);
+        }
+      });
+
+      gridGroup.addMultiple([sprite, label]);
+    });
   }
 
 

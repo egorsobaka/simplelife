@@ -57,7 +57,7 @@ export function handleMovement(cursors: Phaser.Types.Input.Keyboard.CursorKeys) 
     const localY = mod(tileY, CHUNK_SIZE);
     const tileType = chunk.tileData[`${localX}_${localY}`];
 
-    if (!["water", "shore_top", "shore_bottom", "shore_left", "shore_right"].includes(tileType)) {
+    if (!["water", "shore_top", "shore_bottom", "shore_left", "shore_right", "rock"].includes(tileType)) {
       return { isMove: moving, newX, newY, anim };
     }
   } else {
