@@ -340,6 +340,7 @@ class GameScene extends Phaser.Scene {
         const p = data.players[id];
         let sprite: SmoothSprite;
         if (id === getUserId()) {
+          continue;
           sprite = player;
           if (!sprite) {
             continue;
@@ -365,7 +366,7 @@ class GameScene extends Phaser.Scene {
 
         if (p?.anim && p.anim !== "" && (sprite.x !== p.x || sprite.y !== p.y)) {
           sprite.play(p.anim, true);
-        } else if (id !== socket.id) sprite.anims.stop();
+        } else if (id !== getUserId()) sprite.anims.stop();
       }
 
       for (const id in otherPlayers) {
