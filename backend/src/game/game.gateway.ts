@@ -137,6 +137,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     const isValid = this.verifyTelegramInitData(data.initData);
+    console.log("isValid", isValid);
     if (!isValid) {
       console.log('❌ Подпись Telegram недействительна');
       client.disconnect(true);
@@ -153,6 +154,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private verifyTelegramInitData(initData: string): boolean {
+    console.log("process.env.TELEGRAM_BOT_TOKEN", process.env.TELEGRAM_BOT_TOKEN);
     console.log("initData", initData);
     try {
       const urlParams = new URLSearchParams(initData);
@@ -169,7 +171,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       dataCheckArr.sort();
       const dataCheckString = dataCheckArr.join('\n');
 
-      console.log("hmac", dataCheckString);
+      console.log("dataCheckString", dataCheckString);
 
       const secretKey =
         createHash('sha256')
@@ -181,7 +183,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           .update(dataCheckString)
           .digest('hex');
 
-      console.log("hmac", hash);
+      console.log("hmac", hmac, `${hmac}`.trim() === `${hash}`.trim());
 
       return `${hmac}`.trim() === `${hash}`.trim();
     } catch (e) {
