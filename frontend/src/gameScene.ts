@@ -80,27 +80,75 @@ class GameScene extends Phaser.Scene {
 
   // метод для отображения грида крафтинга
   showCraftingGrid(craftableItems: any[]) {
-    const gridGroup = this.add.group();
     const cols = 5; // количество колонок
     const spriteSize = 48;
     const padding = 10;
     const startX = 100;
-    const startY = 100;
+    const startY = 200;
 
     // фильтруем только то, что реально крафтится
     const craftables = craftableItems.filter(item => item.craftable);
+
+    // фон для окна
+    const bgWidth = cols * (spriteSize + padding) + padding;
+    const rows = Math.ceil(craftables.length / cols);
+    const bgHeight = rows * (spriteSize + padding + 24) + padding + 40; // +24 для текста, +40 для заголовка
+
+    const bg = this.add.rectangle(
+      startX + bgWidth / 2 - spriteSize / 2,
+      startY + bgHeight / 2 - spriteSize / 2,
+      bgWidth,
+      bgHeight,
+      0x000000,
+      0.8
+    )
+      .setScrollFactor(0)
+      .setDepth(1999);
+
+    // группа для спрайтов и текста
+    const gridGroup = this.add.group();
+
+    // заголовок окна
+    const title = this.add.text(
+      startX + bgWidth / 2 - spriteSize / 2,
+      startY + 10,
+      "Крафтинг",
+      { fontSize: "20px", color: "#fff", fontStyle: "bold" }
+    )
+      .setOrigin(0.5, 0)
+      .setScrollFactor(0)
+      .setDepth(2000);
+
+    // крестик для закрытия
+    const closeButton = this.add.text(
+      startX + bgWidth - 10,
+      startY + 10,
+      "✖",
+      { fontSize: "20px", color: "#fff" }
+    )
+      .setOrigin(1, 0)
+      .setInteractive()
+      .setScrollFactor(0)
+      .setDepth(2000);
+
+    closeButton.on("pointerdown", () => {
+      gridGroup.clear(true, true);
+      bg.destroy();
+      title.destroy();
+      closeButton.destroy();
+    });
 
     craftables.forEach((item, index) => {
       const col = index % cols;
       const row = Math.floor(index / cols);
 
-      const x = startX + col * (spriteSize + padding);
-      const y = startY + row * (spriteSize + padding);
+      const x = startX + padding + col * (spriteSize + padding);
+      const y = startY + 40 + row * (spriteSize + padding + 24); // +40 для заголовка
 
       // берём фрейм по типу предмета
       const frame = getItemFrame(item.name);
 
-      const sprite = this.add.sprite(x, y, "itemsAtlas", frame)
+      const sprite = this.add.sprite(x, y, "tiles", frame)
         .setInteractive()
         .setScrollFactor(0)
         .setDepth(2000)
@@ -129,7 +177,7 @@ class GameScene extends Phaser.Scene {
               itemName: item.name,
               inventory: this.inventory,
               ownedItems: Object.keys(this.inventory),
-              initData: tg.initData,
+              initData: tg?.initData,
             }),
           });
           const result = await response.json();
@@ -137,6 +185,9 @@ class GameScene extends Phaser.Scene {
           if (result.success) {
             this.addMessage(`✅ Создан предмет: ${item.title}`);
             gridGroup.clear(true, true);
+            bg.destroy();
+            title.destroy();
+            closeButton.destroy();
           } else {
             this.addMessage(`❌ Не удалось скрафтить: ${item.title}`);
           }
@@ -149,7 +200,6 @@ class GameScene extends Phaser.Scene {
       gridGroup.addMultiple([sprite, label]);
     });
   }
-
 
   update() {
     if (!player) return;
@@ -343,6 +393,10 @@ class GameScene extends Phaser.Scene {
           this.inventory[data.type] = 1;
         }
       });
+      socket?.on("crafted", (data: { inventory: any }) => {
+        console.log('crafted', data);
+        this.inventory = data.inventory;
+      });
       socket?.on("itemRemoved", (data: { chunk: string; x: number; y: number }) => {
         console.log('itemRemoved', data);
         removeItemFromChunk(data.chunk, data.x, data.y);
@@ -415,15 +469,6 @@ class GameScene extends Phaser.Scene {
 
       });
     });
-
-    function getItemFrame(type: string): number {
-      const ITEM_INDEX: Record<string, number> = {
-        woodItem: 526,
-        eggItem: 563,
-        stoneItem: 210,
-      };
-      return ITEM_INDEX[type] ?? 0;
-    }
 
     socket.on("snapshot", (data: { players: Record<string, any>, chunks: any, player: any }) => {
       const SNAPSHOT_INTERVAL = 200;
