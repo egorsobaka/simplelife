@@ -173,15 +173,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       console.log("dataCheckString", dataCheckString);
 
-      const secretKey =
-        createHash('sha256')
-          .update(process.env.TELEGRAM_BOT_TOKEN || '')
-          .digest();
+      const secretKey = createHmac('sha256', 'WebAppData')
+        .update(process.env.TELEGRAM_BOT_TOKEN || '')
+        .digest();
 
-      const hmac =
-        createHmac('sha256', secretKey)
-          .update(dataCheckString)
-          .digest('hex');
+      const hmac = createHmac('sha256', secretKey)
+        .update(dataCheckString)
+        .digest('hex');
+
 
       console.log("hmac", hmac, `${hmac}`.trim() === `${hash}`.trim());
 
