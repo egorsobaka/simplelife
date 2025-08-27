@@ -4,8 +4,13 @@ import { createHUD } from "./hud";
 import { createMinimap, drawMinimap } from "./minimap";
 import { loadChunkFromServer, unloadFarChunks, CHUNK_SIZE, loadedChunks, removeItemFromChunk } from "./chunkManager";
 import { handleMovementJoystick } from "./movementHelper.js";
-import socket from "./socket";
+import { initSocket, socket } from "./socket";
 import { InventoryScene } from "./inventoryScene";
+declare global {
+  interface Window {
+    Telegram?: any;
+  }
+}
 
 let currentChunkX = 0;
 let currentChunkY = 0;
@@ -14,6 +19,15 @@ let lastMoveSent = 0;
 const MOVE_THROTTLE = 100;
 
 const mobileDir = { x: 0, y: 0 };
+
+const getUserId = () => {
+  let userId = localStorage.getItem('userId');
+  if (!userId) {
+    userId = "guest_" + Date.now();
+    localStorage.setItem("userId", userId);
+  }
+  return userId;
+}
 
 class GameScene extends Phaser.Scene {
   joystickBase!: Phaser.GameObjects.Arc;
@@ -33,21 +47,17 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
-    createPlayer(this, 0, 0);
-    createAnimations(this);
     createHUD(this);
     createMinimap(this);
 
-    this.cameras.main.startFollow(player);
-    this.cameras.main.setBounds(-Infinity, -Infinity, Infinity, Infinity);
-
     this.scene.add("InventoryScene", InventoryScene);
-    this.initSocket();
     this.createJoystick();
     this.createMessageWindow();
     this.createMessageToggleKey();
     this.createInventoryButton();
+    this.initSocket();
   }
+
 
   update() {
     if (!player) return;
@@ -70,18 +80,18 @@ class GameScene extends Phaser.Scene {
       lastMoveSent = now;
     }
 
-    if (player.targetX !== undefined && player.targetY !== undefined) {
-      const dx = player.targetX - player.x;
-      const dy = player.targetY - player.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const threshold = 10;
-      const correctionSpeed = 100;
-      if (dist > threshold) {
-        const step = correctionSpeed * dt;
-        player.x += dx / dist * Math.min(step, dist);
-        player.y += dy / dist * Math.min(step, dist);
-      }
-    }
+    // if (player.targetX !== undefined && player.targetY !== undefined) {
+    //   const dx = player.targetX - player.x;
+    //   const dy = player.targetY - player.y;
+    //   const dist = Math.sqrt(dx * dx + dy * dy);
+    //   const threshold = 10;
+    //   const correctionSpeed = 100;
+    //   if (dist > threshold) {
+    //     const step = correctionSpeed * dt;
+    //     player.x += dx / dist * Math.min(step, dist);
+    //     player.y += dy / dist * Math.min(step, dist);
+    //   }
+    // }
 
     const smoothMove = (sprite: SmoothSprite) => {
       if (sprite.targetX === undefined || sprite.targetY === undefined) return;
@@ -164,17 +174,7 @@ class GameScene extends Phaser.Scene {
     this.messages.push(text);
 
     socket?.on("message", (msg: string) => this.addMessage(msg));
-    socket?.on("itemPicked", (data: { type: string; x: number; y: number }) => {
-      this.addMessage(`Вы подняли ${data.type}`);
-      if (this.inventory[data.type]) {
-        this.inventory[data.type]++;
-      } else {
-        this.inventory[data.type] = 1;
-      }
-    });
-    socket?.on("itemRemoved", (data: { chunk: string; x: number; y: number }) => {
-      removeItemFromChunk(data.chunk, data.x, data.y);
-    });
+
   }
 
   addMessage(msg: string) {
@@ -225,40 +225,56 @@ class GameScene extends Phaser.Scene {
   }
 
   initSocket() {
+    initSocket();
     socket.on("connect", () => {
+      const tg = window?.Telegram?.WebApp;
+      const user = tg?.initDataUnsafe?.user;
+      if (user) {
+        console.log("Игрок из Telegram:", user);
+        socket.emit("join", {
+          userId: user.id,
+          username: user.username,
+          firstName: user.first_name,
+          initData: tg?.initData
+        });
+      } else {
+        const userId = getUserId();
+        socket.emit("join", { userId: userId });
+      }
+
+      socket?.on("itemPicked", (data: { type: string; x: number; y: number }) => {
+        console.log('itemPicked', data);
+        this.addMessage(`Вы подняли ${data.type}`);
+        if (this.inventory[data.type]) {
+          this.inventory[data.type]++;
+        } else {
+          this.inventory[data.type] = 1;
+        }
+      });
+      socket?.on("itemRemoved", (data: { chunk: string; x: number; y: number }) => {
+        console.log('itemRemoved', data);
+        removeItemFromChunk(data.chunk, data.x, data.y);
+      });
+
       console.log("Socket connected", socket.id);
-      socket.emit("join");
-      socket.emit("requestChunks", { cx: currentChunkX, cy: currentChunkY });
-    });
 
-    socket.on("itemAdded", (data: { chunk: string; x: number; y: number; type: string }) => {
-      const { chunk, x, y, type } = data;
-      if (!loadedChunks[chunk]) return;
+      socket.on("spawn", (data: { x: number; y: number }) => {
+        console.log("spawn", data);
 
-      const loadedChunk = loadedChunks[chunk];
-      const [chunkX, chunkY] = chunk.split("_").map(Number);
-      const offsetX = chunkX * CHUNK_SIZE * 32;
-      const offsetY = chunkY * CHUNK_SIZE * 32;
+        if (!player) {
+          createPlayer(this, data.x, data.y);
+          createAnimations(this);
+          this.cameras.main.startFollow(player);
+          this.cameras.main.setBounds(-Infinity, -Infinity, Infinity, Infinity);
 
-      const sprite = this.add.image(
-        offsetX + x * 32 + 16,
-        offsetY + y * 32 + 16,
-        "tiles",
-        getItemFrame(type)
-      ).setOrigin(0.5).setScale(32 / 16);
+          socket.emit("requestChunks", { cx: Math.floor(data.x / (CHUNK_SIZE * 32)), cy: Math.floor(data.y / (CHUNK_SIZE * 32)) });
+        }
+      });
 
-      loadedChunk.itemSprites.push({ sprite, x, y, type });
-      if (!loadedChunk.items) loadedChunk.items = [];
-      loadedChunk.items.push({ x, y, type });
+      socket.on("itemAdded", (data: { chunk: string; x: number; y: number; type: string }) => {
+        const { chunk, x, y, type } = data;
+        if (!loadedChunks[chunk]) return;
 
-      this.addMessage(`На карте появился ${type}`);
-    });
-
-    socket.on("itemDropped", (data: { chunk: string; x: number; y: number; type: string }) => {
-      const { chunk, x, y, type } = data;
-      this.addMessage(`На карте появился ${type}`);
-      // Если предмет находится в загруженном чанке, создаем его спрайт.
-      if (loadedChunks[chunk]) {
         const loadedChunk = loadedChunks[chunk];
         const [chunkX, chunkY] = chunk.split("_").map(Number);
         const offsetX = chunkX * CHUNK_SIZE * 32;
@@ -274,7 +290,38 @@ class GameScene extends Phaser.Scene {
         loadedChunk.itemSprites.push({ sprite, x, y, type });
         if (!loadedChunk.items) loadedChunk.items = [];
         loadedChunk.items.push({ x, y, type });
-      }
+
+        this.addMessage(`На карте появился ${type}`);
+      });
+
+      socket.on("itemDropped", (data: { chunk: string; x: number; y: number; type: string }) => {
+        console.log("Item dropped", data)
+        const { chunk, x, y, type } = data;
+        this.addMessage(`На карте появился ${type}`);
+        if (loadedChunks[chunk]) {
+          const loadedChunk = loadedChunks[chunk];
+          const [chunkX, chunkY] = chunk.split("_").map(Number);
+
+          const offsetX = chunkX * CHUNK_SIZE * 32;
+          const offsetY = chunkY * CHUNK_SIZE * 32;
+
+          console.log(offsetX, offsetY)
+
+          const sprite = this.add.image(
+            offsetX + x * 32 + 16,
+            offsetY + y * 32 + 16,
+            "tiles",
+            getItemFrame(type)
+          ).setOrigin(0.5).setScale(32 / 16);
+
+          loadedChunk.itemSprites.push({ sprite, x, y, type });
+          if (!loadedChunk.items) loadedChunk.items = [];
+          loadedChunk.items.push({ x, y, type });
+        } else {
+          console.log('Chunk not loaded', chunk)
+        }
+
+      });
     });
 
     function getItemFrame(type: string): number {
@@ -286,14 +333,18 @@ class GameScene extends Phaser.Scene {
       return ITEM_INDEX[type] ?? 0;
     }
 
-    socket.on("snapshot", (data: { players: Record<string, any>, chunks: any }) => {
+    socket.on("snapshot", (data: { players: Record<string, any>, chunks: any, player: any }) => {
       const SNAPSHOT_INTERVAL = 200;
 
       for (const id in data.players) {
         const p = data.players[id];
         let sprite: SmoothSprite;
-
-        if (id === socket.id) sprite = player;
+        if (id === getUserId()) {
+          sprite = player;
+          if (!sprite) {
+            continue;
+          }
+        }
         else {
           if (!otherPlayers[id]) {
             const s = this.add.sprite(p.x, p.y, "player") as SmoothSprite;
@@ -330,6 +381,13 @@ class GameScene extends Phaser.Scene {
           loadChunkFromServer(this, chunkId, chunk);
         }
       }
+
+      if (data?.player?.inventory?.length > 0) {
+        for (const inventory of data?.player?.inventory) {
+          this.inventory[inventory] = (this.inventory[inventory] ? this.inventory[inventory] : 0) + 1;
+        }
+      }
+
     });
   }
 }

@@ -47,16 +47,19 @@ export class MapService {
   /**
    * Добавляет предмет на карту в указанные тайловые координаты.
    */
-  addItemToMap(x: number, y: number, itemType: string): { chunk: string, x: number, y: number, type: string } | null {
-    const chunkX = Math.floor(x / this.CHUNK_SIZE_IN_TILES);
-    const chunkY = Math.floor(y / this.CHUNK_SIZE_IN_TILES);
+  addItemToMap(chunkX: number, chunkY: number, tileX: number, tileY: number, itemType: string): { chunk: string, x: number, y: number, type: string } | null {
     const key = `${chunkX}_${chunkY}`;
 
     const chunk = this.getChunk(chunkX, chunkY);
     if (!chunk) return null;
 
-    const tileXInChunk = x % this.CHUNK_SIZE_IN_TILES;
-    const tileYInChunk = y % this.CHUNK_SIZE_IN_TILES;
+    let tileXInChunk = tileX % this.CHUNK_SIZE_IN_TILES;
+    let tileYInChunk = tileY % this.CHUNK_SIZE_IN_TILES;
+
+    tileXInChunk = (tileXInChunk < 0 ? this.CHUNK_SIZE_IN_TILES + tileXInChunk : tileXInChunk);
+    tileYInChunk = (tileYInChunk < 0 ? this.CHUNK_SIZE_IN_TILES + tileYInChunk : tileYInChunk);
+
+    console.log("tileXInChunk", tileXInChunk, tileYInChunk)
 
     // Проверяем, не занят ли уже этот тайл
     // const occupied = chunk.items.some(i => i.x === tileXInChunk && i.y === tileYInChunk);
@@ -65,14 +68,24 @@ export class MapService {
     //   return null;
     // }
 
-    const newItem = { x: tileXInChunk, y: tileYInChunk + 1, type: itemType };
+    if (tileXInChunk + 1 <= this.CHUNK_SIZE_IN_TILES) {
+      tileXInChunk = tileXInChunk + 1;
+    } else if (tileYInChunk + 1 <= this.CHUNK_SIZE_IN_TILES) {
+      tileYInChunk = tileYInChunk + 1;
+    } else if (tileXInChunk - 1 >= 0) {
+      tileXInChunk = tileXInChunk - 1;
+    } else {
+      tileYInChunk = tileYInChunk - 1;
+    }
+
+    const newItem = { x: tileXInChunk, y: tileYInChunk, type: itemType };
+    console.log("newItem", newItem);
     chunk.items.push(newItem);
-    
     return {
-        chunk: key,
-        x: newItem.x,
-        y: newItem.y,
-        type: newItem.type
+      chunk: key,
+      x: newItem.x,
+      y: newItem.y,
+      type: newItem.type
     };
   }
 

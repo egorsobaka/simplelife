@@ -7,16 +7,19 @@ interface Player {
   x: number;
   y: number;
   anim: string;
+  socketId: string;
   inventory: string[];
+  chunk?: any;
 }
 
 @Injectable()
 export class GameService {
   private players: Record<string, Player> = {};
-  private readonly MAX_SPEED = 200; // px/sec
+  private readonly MAX_SPEED = 1000; // px/sec
   private readonly TICK_INTERVAL = 50; // ms
   private itemSpawnInterval: NodeJS.Timeout;
   private server: Server;
+  private socketToTelegram: Record<string, string> = {}; // маппинг socketId -> telegramId
 
   constructor(private readonly mapService: MapService) { }
 
@@ -46,35 +49,85 @@ export class GameService {
   }
 
   /**
-   * Добавляет нового игрока.
-   */
-  addPlayer(id: string) {
-    this.players[id] = { id, x: 100, y: 100, anim: "", inventory: [] };
+ * Добавляет нового игрока или возвращает уже существующего.
+ */
+  addPlayer(socketId: string, telegramId: string) {
+    if (this.players[telegramId]) {
+      this.socketToTelegram[socketId] = telegramId;
+      this.players[telegramId].socketId = socketId;
+      return {
+        x: this.players[telegramId].x,
+        y: this.players[telegramId].y,
+      };
+    }
+
+    const chunkX = 0;
+    const chunkY = 0;
+    const chunk = this.mapService.getChunk(chunkX, chunkY);
+
+    if (!chunk) {
+      this.players[telegramId] = { id: telegramId, x: 100, y: 100, anim: "", inventory: [], socketId, chunk: { chunkX, chunkY } };
+      return { x: 100, y: 100 };
+    }
+
+    let spawnX = 0;
+    let spawnY = 0;
+    let found = false;
+
+    for (let y = 0; y < chunk.tiles.length; y++) {
+      for (let x = 0; x < chunk.tiles[y].length; x++) {
+        const tile = chunk.tiles[y][x];
+        if (tile?.type === "grass") {
+          spawnX = (chunkX * 20 + x) * 32 + 16; // переводим в глобальные координаты пикселей
+          spawnY = (chunkY * 20 + y) * 32 + 16;
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    if (!found) {
+      spawnX = 100;
+      spawnY = 100;
+    }
+
+    this.socketToTelegram[socketId] = telegramId;
+    this.players[telegramId] = {
+      id: telegramId,
+      socketId,
+      x: spawnX,
+      y: spawnY,
+      anim: "",
+      inventory: [],
+      chunk: { chunkX, chunkY },
+    };
+    return { x: spawnX, y: spawnY };
   }
 
   /**
    * Удаляет игрока.
    */
   removePlayer(id: string) {
-    delete this.players[id];
+    delete this.socketToTelegram[id];
   }
-  
+
   /**
    * Возвращает данные игрока по ID.
    * Возвращает null, если игрок не найден.
    */
   getPlayer(id: string): Player | null {
-    return this.players[id] || null;
+    return this.players[this.socketToTelegram[id]] || null;
   }
 
   /**
    * Обновляет позицию игрока с ограничением скорости.
    */
   updatePosition(id: string, x: number, y: number, anim: string) {
-    const player = this.players[id];
+    const player = this.players[this.socketToTelegram[id]];
     if (!player) return;
 
-    const dt = this.TICK_INTERVAL / 1000;
+    const dt = this.TICK_INTERVAL / 100;
     const maxStep = this.MAX_SPEED * dt;
 
     const dx = x - player.x;
@@ -89,9 +142,13 @@ export class GameService {
       player.x = x;
       player.y = y;
     }
-
     player.anim = anim;
 
+    const tileX = Math.floor((player.x) / 32);
+    const tileY = Math.floor(player.y / 32);
+    const chunkX = Math.floor(tileX / 20);
+    const chunkY = Math.floor(tileY / 20);
+    player.chunk = { chunkX, chunkY, tileX, tileY }
     this.checkItemPickup(player);
   }
 
@@ -114,29 +171,32 @@ export class GameService {
    * Возвращает данные о выброшенном предмете или null.
    */
   dropItem(id: string, itemType: string) {
-    const player = this.players[id];
+    const player = this.players[this.socketToTelegram[id]];
     if (!player) return null;
 
     const itemIndex = player.inventory.indexOf(itemType);
     if (itemIndex === -1) {
-      console.log(`Игрок ${player.id} не может выбросить ${itemType}, его нет в инвентаре`);
+      console.log(`Игрок ${player.id} не может выбросить ${itemType}, его нет в инвентаре ${player.x} ${player.y}`);
       return null;
     }
 
     player.inventory.splice(itemIndex, 1);
 
-    const tileX = Math.floor((player.x) / 32);
-    const tileY = Math.floor(player.y / 32);
+    let tileX = Math.floor((player.x) / 32);
+    let tileY = Math.floor(player.y / 32);
+
+    console.log("player tileX, tileY", tileX, tileY)
+
     const chunkX = Math.floor(tileX / 20);
     const chunkY = Math.floor(tileY / 20);
     const chunkKey = `${chunkX}_${chunkY}`;
 
-    const addedItem = this.mapService.addItemToMap(tileX, tileY, itemType);
+    const addedItem = this.mapService.addItemToMap(chunkX, chunkY, tileX, tileY, itemType);
 
     if (addedItem) {
-      console.log(`Игрок ${player.id} выбросил ${itemType} в чанке ${chunkKey} на координатах ${addedItem.x}, ${addedItem.y}`);
+      console.log(`Игрок ${player.id}  ${player.x} ${player.y} выбросил ${itemType} в чанке ${chunkKey} на координатах ${addedItem.x}, ${addedItem.y} addedItem.chunk ${addedItem.chunk}`);
       return {
-        chunk: chunkKey,
+        chunk: addedItem.chunk,
         x: addedItem.x,
         y: addedItem.y,
         type: addedItem.type,
@@ -172,9 +232,9 @@ export class GameService {
 
       chunk.items.splice(foundIndex, 1);
 
-      console.log(`Игрок ${player.id} поднял ${item.type}`);
+      console.log(`Игрок ${player.socketId} поднял ${item.type}`);
 
-      this.server.to(player.id).emit("itemPicked", {
+      this.server.to(player.socketId).emit("itemPicked", {
         type: item.type,
         x: item.x,
         y: item.y,

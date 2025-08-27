@@ -10,6 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
 import { MapService } from './map.service';
+import { createHash, createHmac } from 'crypto';
 
 @WebSocketGateway({
   cors: {
@@ -25,7 +26,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(
     private readonly gameService: GameService,
-    private readonly mapService: MapService
+    private readonly mapService: MapService,
   ) { }
 
   afterInit(server: Server) {
@@ -38,7 +39,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.disconnect(true);
       return;
     }
-    this.gameService.addPlayer(clientId);
     this.sendSnapshot(client);
   }
 
@@ -51,8 +51,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('move')
   handleMove(
-    @MessageBody() data: { x: number; y: number, anim: string },
-    @ConnectedSocket() client: Socket
+    @MessageBody() data: { x: number; y: number; anim: string },
+    @ConnectedSocket() client: Socket,
   ) {
     if (!data || typeof data.x !== 'number' || typeof data.y !== 'number') return;
 
@@ -64,7 +64,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('requestChunks')
-  handleRequestChunks(@MessageBody() data: { cx: number; cy: number }, @ConnectedSocket() client: Socket) {
+  handleRequestChunks(
+    @MessageBody() data: { cx: number; cy: number },
+    @ConnectedSocket() client: Socket,
+  ) {
     if (!data || typeof data.cx !== 'number' || typeof data.cy !== 'number') return;
 
     const chunks: Record<string, any> = {};
@@ -80,15 +83,15 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     client.emit('snapshot', {
       players: this.gameService.getSnapshot().players,
+      player: this.gameService.getPlayer(client.id),
       chunks,
     });
   }
 
-  // Добавлен новый обработчик для выбрасывания предметов
   @SubscribeMessage('dropItem')
   handleDropItem(
     @MessageBody() data: { itemType: string },
-    @ConnectedSocket() client: Socket
+    @ConnectedSocket() client: Socket,
   ) {
     if (!data || typeof data.itemType !== 'string') return;
 
@@ -98,10 +101,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const playerState = this.gameService.getPlayer(clientId);
     if (!playerState) return;
 
-    // Вызываем метод GameService для обработки логики
     const droppedItem = this.gameService.dropItem(clientId, data.itemType);
-    
-    // Если предмет успешно выброшен, отправляем всем клиентам уведомление
+
     if (droppedItem) {
       this.server.emit('itemDropped', droppedItem);
     }
@@ -111,6 +112,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const snapshot = this.gameService.getSnapshot();
     client.emit('snapshot', {
       players: snapshot.players,
+      player: this.gameService.getPlayer(client.id),
       chunks: {},
     });
   }
@@ -122,4 +124,65 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       chunks: {},
     });
   }
+
+  @SubscribeMessage('join')
+  handleJoin(
+    @MessageBody() data: { userId: any; initData: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    if (!data?.initData) {
+      const spawn = this.gameService.addPlayer(client.id, data.userId);
+      client.emit('spawn', spawn);
+      return;
+    }
+
+    const isValid = this.verifyTelegramInitData(data.initData);
+    if (!isValid) {
+      console.log('❌ Подпись Telegram недействительна');
+      client.disconnect(true);
+      return;
+    }
+
+    if (!data.userId) {
+      client.disconnect(true);
+      return;
+    }
+    const spawn = this.gameService.addPlayer(client.id, data.userId);
+    client.emit('spawn', spawn);
+    this.sendSnapshot(client);
+  }
+
+  private verifyTelegramInitData(initData: string): boolean {
+    try {
+      const urlParams = new URLSearchParams(initData);
+      const hash = urlParams.get('hash');
+      if (!hash) return false;
+
+      // соберём строку data_check_string
+      const dataCheckArr: string[] = [];
+      urlParams.forEach((val, key) => {
+        if (key !== 'hash') dataCheckArr.push(`${key}=${val}`);
+      });
+      dataCheckArr.sort();
+      const dataCheckString = dataCheckArr.join('\n');
+
+      // ключ = HMAC-SHA256 от токена бота
+      const secretKey =
+        createHash('sha256')
+          .update(process.env.BOT_TOKEN || '')
+          .digest();
+
+      const hmac =
+        createHmac('sha256', secretKey)
+          .update(dataCheckString)
+          .digest('hex');
+
+      return hmac === hash;
+    } catch (e) {
+      console.error('verifyTelegramInitData error', e);
+      return false;
+    }
+  }
+
+
 }
