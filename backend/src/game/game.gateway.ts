@@ -12,6 +12,11 @@ import { GameService } from './game.service';
 import { MapService } from './map.service';
 import { createHash, createHmac } from 'crypto';
 
+interface ChopTap {
+  tileX: number;
+  tileY: number;
+  count: number;
+}
 @WebSocketGateway({
   cors: {
     origin: ['https://game.almet22.ru'],
@@ -47,6 +52,46 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!clientId) return;
     this.gameService.removePlayer(clientId);
     this.broadcastSnapshot();
+  }
+
+  @SubscribeMessage('chopTiles')
+  handleChopTiles(
+    @MessageBody() data: { chunkX: number; chunkY: number; taps: ChopTap[] },
+    @ConnectedSocket() client: Socket
+  ) {
+    const clientId = client.id;
+    if (!clientId) return;
+
+    const playerState = this.gameService.getPlayer(clientId);
+    if (!playerState) return;
+
+    const chunkId = `${data.chunkX}_${data.chunkY}`;
+    const chunk = this.mapService.getChunk(data.chunkX, data.chunkY);
+    if (!chunk) return;
+
+    let totalWood = 0;
+
+    data.taps.forEach(tap => {
+      const mapItem = chunk.items.find(item => item.x === tap.tileX && item.y === tap.tileY);
+      if (!mapItem) return;
+
+      if (mapItem.type === 'woodItem') {
+        // добавляем ресурсы игроку
+        this.gameService.addItemToInventory(clientId, 'wood', tap.count);
+        totalWood += tap.count;
+
+        // удаляем тайл с карты
+        chunk.items = chunk.items.filter(item => !(item.x === tap.tileX && item.y === tap.tileY));
+
+        // отправляем событие всем клиентам, что тайл удалён
+        this.server.emit('itemRemoved', { chunk: chunkId, x: tap.tileX, y: tap.tileY });
+      }
+    });
+
+    if (totalWood > 0) {
+      // можно отправить обновлённый инвентарь игроку
+      client.emit('chopped', { item: 'wood', amount: totalWood, inventory: this.gameService.getPlayerInventory(clientId) });
+    }
   }
 
   @SubscribeMessage('move')
@@ -181,6 +226,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return false;
     }
   }
+
+
 
 
 }

@@ -7,6 +7,7 @@ import { handleMovementJoystick } from "./movementHelper.js";
 import { initSocket, socket } from "./socket";
 import { InventoryScene } from "./inventoryScene";
 import { fetchCraftableItems } from "./craftingAPI.js";
+import { TILE_SIZE } from "./mapGenerator.js";
 declare global {
   interface Window {
     Telegram?: any;
@@ -37,6 +38,8 @@ class GameScene extends Phaser.Scene {
   messages: Phaser.GameObjects.Text[] = [];
   messagesVisible = true;
   inventory: { [key: string]: number } = {};
+  chopZone!: Phaser.GameObjects.Rectangle;
+  chopBuffer: { tileX: number; tileY: number; count: number }[] = [];
 
   constructor() {
     super({ key: "GameScene" });
@@ -57,6 +60,7 @@ class GameScene extends Phaser.Scene {
     this.createMessageToggleKey();
     this.createInventoryButton();
     this.createCraftButton();
+    this.createChopZone();
     this.initSocket();
   }
 
@@ -365,6 +369,73 @@ class GameScene extends Phaser.Scene {
       }
     });
   }
+
+  createChopZone() {
+    const { width, height } = this.scale;
+    const zoneSize = 96; // размер зоны рубки
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    this.chopZone = this.add.rectangle(centerX, centerY, zoneSize, zoneSize, 0xff00ff, 0.1)
+      .setOrigin(0.5)
+      .setInteractive()
+      .setScrollFactor(0)
+      .setDepth(10000);
+
+    this.chopZone.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (!player) return;
+
+      console.log(Math.floor(pointer.x / TILE_SIZE) % 20, Math.floor(pointer.y / TILE_SIZE) % 20)
+
+      let tileX = Math.floor(player.x / TILE_SIZE) % 20;
+      let tileY = Math.floor(player.y / TILE_SIZE) % 20;
+
+      console.log(tileX, tileY);
+
+      if (tileX < 0) tileX += 20;
+      if (tileY < 0) tileY += 20;
+
+      // добавляем в буфер
+      const existing = this.chopBuffer.find(t => t.tileX === tileX && t.tileY === tileY);
+      if (existing) {
+        existing.count++;
+      } else {
+        this.chopBuffer.push({ tileX, tileY, count: 1 });
+      }
+    });
+
+    this.time.addEvent({
+      delay: 500,
+      loop: true,
+      callback: () => {
+        if (this.chopBuffer.length === 0) return;
+        if (!socket) return;
+
+        // отправляем все тапы на сервер
+        socket.emit("chopTiles", {
+          chunkX: Math.floor(player.x / (CHUNK_SIZE * TILE_SIZE)),
+          chunkY: Math.floor(player.y / (CHUNK_SIZE * TILE_SIZE)),
+          taps: this.chopBuffer
+        });
+
+        this.chopBuffer = []; // очищаем буфер после отправки
+      }
+    });
+  }
+
+
+  // Метод для добавления ресурса в инвентарь
+  addItemToInventory(type: string, count: number) {
+    if (!this.inventory[type]) this.inventory[type] = 0;
+    this.inventory[type] += count;
+
+    // если сцена инвентаря активна, обновляем её
+    // const invScene = this.scene.get("InventoryScene") as any;
+    // if (invScene?.isActive()) {
+    //   invScene.setInventory(this.inventory);
+    // }
+  }
+
 
   initSocket() {
     initSocket();

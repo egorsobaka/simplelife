@@ -228,6 +228,10 @@ export class GameService {
     if (foundIndex >= 0) {
       const item = chunk.items[foundIndex];
 
+      if (["woodItem"].includes(item.type)) {
+        return;
+      }
+
       player.inventory.push(item.type);
 
       chunk.items.splice(foundIndex, 1);
@@ -275,6 +279,41 @@ export class GameService {
     }
 
     console.log(`Добавлено ${count} предметов на карту`);
+  }
+
+  addItemToInventory(socketId: string, itemType: string, count: number) {
+    const telegramId = this.socketToTelegram[socketId];
+    if (!telegramId) return;
+
+    const player = this.players[telegramId];
+    if (!player) return;
+
+    for (let i = 0; i < count; i++) {
+      player.inventory.push(itemType);
+    }
+
+    // Можно сразу уведомить игрока
+    this.server.to(socketId).emit('inventoryUpdated', {
+      inventory: this.getPlayerInventory(socketId),
+    });
+  }
+
+  /**
+   * Возвращает инвентарь игрока в виде объекта с количеством каждого предмета.
+   */
+  getPlayerInventory(socketId: string): Record<string, number> {
+    const telegramId = this.socketToTelegram[socketId];
+    if (!telegramId) return {};
+
+    const player = this.players[telegramId];
+    if (!player) return {};
+
+    const inv: Record<string, number> = {};
+    player.inventory.forEach(item => {
+      if (!inv[item]) inv[item] = 0;
+      inv[item]++;
+    });
+    return inv;
   }
 
   private growTrees() {
