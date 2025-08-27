@@ -166,10 +166,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       dataCheckArr.sort();
       const dataCheckString = dataCheckArr.join('\n');
 
-      // ключ = HMAC-SHA256 от токена бота
       const secretKey =
         createHash('sha256')
-          .update(process.env.BOT_TOKEN || '')
+          .update(process.env.TELEGRAM_BOT_TOKEN || '')
           .digest();
 
       const hmac =
