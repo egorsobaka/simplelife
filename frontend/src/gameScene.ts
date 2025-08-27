@@ -372,7 +372,7 @@ class GameScene extends Phaser.Scene {
 
   createChopZone() {
     const { width, height } = this.scale;
-    const zoneSize = 96; // размер зоны рубки
+    const zoneSize = 80; // размер зоны рубки
     const centerX = width / 2;
     const centerY = height / 2;
 
@@ -385,10 +385,8 @@ class GameScene extends Phaser.Scene {
     this.chopZone.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       if (!player) return;
 
-      console.log(Math.floor(pointer.x / TILE_SIZE) % 20, Math.floor(pointer.y / TILE_SIZE) % 20)
-
-      let tileX = Math.floor(player.x / TILE_SIZE) % 20;
-      let tileY = Math.floor(player.y / TILE_SIZE) % 20;
+      let tileX = Math.floor((player.x + (pointer.x - centerX)) / TILE_SIZE) % 20;
+      let tileY = Math.floor((player.y + (pointer.y - centerY)) / TILE_SIZE) % 20;
 
       console.log(tileX, tileY);
 
@@ -548,7 +546,6 @@ class GameScene extends Phaser.Scene {
         const p = data.players[id];
         let sprite: SmoothSprite;
         if (id === getUserId()) {
-          continue;
           sprite = player;
           if (!sprite) {
             continue;

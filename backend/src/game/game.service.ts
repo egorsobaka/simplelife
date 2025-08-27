@@ -120,9 +120,6 @@ export class GameService {
     return this.players[this.socketToTelegram[id]] || null;
   }
 
-  /**
-   * Обновляет позицию игрока с ограничением скорости.
-   */
   updatePosition(id: string, x: number, y: number, anim: string) {
     const player = this.players[this.socketToTelegram[id]];
     if (!player) return;
@@ -134,23 +131,45 @@ export class GameService {
     const dy = y - player.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
+    let newX = player.x;
+    let newY = player.y;
+
     if (dist > maxStep) {
       const scale = maxStep / dist;
-      player.x += dx * scale;
-      player.y += dy * scale;
+      newX += dx * scale;
+      newY += dy * scale;
     } else {
-      player.x = x;
-      player.y = y;
+      newX = x;
+      newY = y;
     }
-    player.anim = anim;
 
-    const tileX = Math.floor((player.x) / 32);
-    const tileY = Math.floor(player.y / 32);
+    // Проверка тайла на карте
+    const tileX = Math.floor(newX / 32);
+    const tileY = Math.floor(newY / 32);
     const chunkX = Math.floor(tileX / 20);
     const chunkY = Math.floor(tileY / 20);
-    player.chunk = { chunkX, chunkY, tileX, tileY }
+    const chunk = this.mapService.getChunk(chunkX, chunkY);
+
+    if (chunk) {
+      const tileInChunkX = tileX % 20;
+      const tileInChunkY = tileY % 20;
+
+      const tile = chunk.tiles[tileInChunkY]?.[tileInChunkX];
+      if (tile && (tile.type === 'water' || tile.type === 'rock')) {
+        // Тайл непроходимый — остаёмся на старой позиции
+        newX = player.x;
+        newY = player.y;
+      }
+    }
+
+    player.x = newX;
+    player.y = newY;
+    player.anim = anim;
+
+    player.chunk = { chunkX, chunkY, tileX, tileY };
     this.checkItemPickup(player);
   }
+
 
   /**
    * Возвращает снимок состояния игры.

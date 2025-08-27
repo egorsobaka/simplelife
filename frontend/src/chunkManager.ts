@@ -176,4 +176,10 @@ export function removeItemFromChunk(chunkKey: string, x: number, y: number) {
     chunk.itemSprites[idx].sprite.destroy();
     chunk.itemSprites.splice(idx, 1);
   }
+
+  const idx1 = chunk.items.findIndex(i => i.x === x && i.y === y);
+  if (idx1 >= 0) {
+    chunk.items.splice(idx1, 1);
+  }
+
 }

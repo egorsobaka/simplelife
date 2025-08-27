@@ -48,6 +48,8 @@ function canMoveTo(x: number, y: number) {
   const tileType = chunk.tileData[`${localX}_${localY}`];
 
   // запрещённые тайлы
-  const blockedTiles = ["water", "shore_top", "shore_bottom", "shore_left", "shore_right"];
-  return !blockedTiles.includes(tileType);
+  const blockedTiles = ["water", "shore_top", "shore_bottom", "shore_left", "shore_right", "rock"];
+  const blockedItems = ["woodItem"];
+  const itemType: any = chunk.items.find((item) => item.x === localX && item.y === localY)?.type;
+  return !blockedTiles.includes(tileType) && !blockedItems.includes(itemType);
 }

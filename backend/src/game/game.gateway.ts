@@ -89,7 +89,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
 
     if (totalWood > 0) {
-      // можно отправить обновлённый инвентарь игроку
       client.emit('chopped', { item: 'wood', amount: totalWood, inventory: this.gameService.getPlayerInventory(clientId) });
     }
   }
