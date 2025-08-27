@@ -5,7 +5,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
   app.enableCors({
-    origin: ['http://localhost:5173'], // фронт на vite
+    origin: ['http://localhost:5173', 'https://game.almet22.ru'], // фронт на vite
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
