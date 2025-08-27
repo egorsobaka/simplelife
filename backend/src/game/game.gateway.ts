@@ -183,7 +183,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       console.log("hmac", hash);
 
-      return hmac === hash;
+      return `${hmac}`.trim() === `${hash}`.trim();
     } catch (e) {
       console.error('verifyTelegramInitData error', e);
       return false;
