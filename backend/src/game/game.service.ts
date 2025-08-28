@@ -30,11 +30,11 @@ export class GameService {
 
     setInterval(() => {
       this.growTrees();
-    }, 1000 * 3600 / 4);
+    }, 1000 * 3600 * 4);
 
     setInterval(() => {
       this.growStones();
-    }, 1000 * 3600 / 2);
+    }, 1000 * 3600 * 8);
   }
 
   onModuleDestroy() {
@@ -370,8 +370,8 @@ export class GameService {
           const tile = chunk.tiles[ny]?.[nx];
           const occupied = chunk.items.some(i => i.x === nx && i.y === ny);
 
-          if (tile?.type === "grass" && !occupied) {
-            if (Math.random() < 0.3) {
+          if (tile?.type === "forest" && !occupied) {
+            if (Math.random() < 0.1) {
               chunk.items.push({ x: nx, y: ny, type: "woodItem" });
               this.server?.emit("itemAdded", {
                 chunk: chunkKey,
