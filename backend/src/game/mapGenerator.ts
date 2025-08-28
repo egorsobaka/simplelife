@@ -119,10 +119,10 @@ function generateMountains(mapArr: MapTile[][], chunkX: number, chunkY: number, 
   // строим горы сверху вниз
   for (let y = 0; y < MAP_HEIGHT; y++) {
     if (mapArr[y][mountainX].type === "water") continue;
-    if (Math.random() < 0.5) {
+    if (Math.random() < 0.8) {
       mountainX + 1 < 20 && mountainX++;
     } else
-      if (Math.random() < 0.5) {
+      if (Math.random() < 0.3) {
         mountainX - 1 >= 0 && mountainX--;
       }
     if (Math.random() < 0.8) {
@@ -165,7 +165,7 @@ export function generateMap(chunkX: number, chunkY: number): { map: MapTile[][];
   const rightKey = `${chunkX + 1}_${chunkY}`;
   let riverPositions: number[] | undefined;
 
-  if (chunkRivers[leftKey] || chunkRivers[rightKey] || (chunkX === 0 && chunkY === 0)) {
+  if (chunkRivers[leftKey] || chunkRivers[rightKey] || (chunkY % 3 === 0)) {
     let entryY = Math.floor(MAP_HEIGHT / 2);
 
     if (chunkRivers[leftKey]) {
@@ -212,21 +212,6 @@ export function generateMap(chunkX: number, chunkY: number): { map: MapTile[][];
 
   // горы (перпендикулярно реке)
   generateMountains(mapArr, chunkX, chunkY, riverPositions);
-
-  // камни (обычные россыпи)
-  for (let i = 0; i < 5; i++) {
-    let gx = Math.floor(Math.random() * MAP_WIDTH);
-    let gy = Math.floor(Math.random() * MAP_HEIGHT);
-    for (let len = 0; len < 8; len++) {
-      if (gy >= 0 && gx >= 0 && gy < MAP_HEIGHT && gx < MAP_WIDTH) {
-        if (mapArr[gy][gx].type !== "water" && mapArr[gy][gx].type !== "sand") safeSetTile(mapArr, gx, gy, "stone");
-        if (gx + 1 < MAP_WIDTH && mapArr[gy][gx + 1].type !== "water") safeSetTile(mapArr, gx + 1, gy, "stone");
-        if (gy + 1 < MAP_HEIGHT && mapArr[gy + 1][gx].type !== "water") safeSetTile(mapArr, gx, gy + 1, "stone");
-      }
-      gx += Math.floor(Math.random() * 3) - 1;
-      gy += Math.floor(Math.random() * 3) - 1;
-    }
-  }
 
   // расширяем лес внутри карты
   generateForests(mapArr);
