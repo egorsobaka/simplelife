@@ -438,20 +438,25 @@ class GameScene extends Phaser.Scene {
   initSocket() {
     initSocket();
     socket.on("connect", () => {
-      const tg = window?.Telegram?.WebApp;
-      const user = tg?.initDataUnsafe?.user;
-      if (user) {
-        console.log("Игрок из Telegram:", user);
-        socket.emit("join", {
-          userId: user.id,
-          username: user.username,
-          firstName: user.first_name,
-          initData: tg?.initData
-        });
-      } else {
-        const userId = getUserId();
-        socket.emit("join", { userId: userId });
-      }
+      setTimeout(() => {
+        const tg = window?.Telegram?.WebApp;
+        const user = tg?.initDataUnsafe?.user;
+        if (user) {
+          console.log("Игрок из Telegram:", user);
+          socket.emit("join", {
+            userId: user.id,
+            username: user.username,
+            firstName: user.first_name,
+            initData: tg?.initData
+          });
+        } else {
+          console.log('No user');
+          return;
+          const userId = getUserId();
+          socket.emit("join", { userId: userId });
+        }
+
+      }, 500);
 
       socket?.on("itemPicked", (data: { type: string; x: number; y: number }) => {
         console.log('itemPicked', data);
