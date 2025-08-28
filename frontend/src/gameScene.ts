@@ -23,12 +23,30 @@ const MOVE_THROTTLE = 100;
 const mobileDir = { x: 0, y: 0 };
 
 const getUserId = () => {
+
+  const tg = window?.Telegram?.WebApp;
+  const user = tg?.initDataUnsafe?.user;
+
+  if (user) {
+    return {
+      userId: user.id,
+      username: user.username,
+      firstName: user.first_name,
+      initData: tg?.initData
+    };
+  }
+
   let userId = localStorage.getItem('userId');
   if (!userId) {
     userId = "guest_" + Date.now();
     localStorage.setItem("userId", userId);
   }
-  return userId;
+  return {
+    userId,
+    username: userId,
+    firstName: userId,
+    initData: null
+  };
 }
 
 class GameScene extends Phaser.Scene {
@@ -439,23 +457,11 @@ class GameScene extends Phaser.Scene {
     initSocket();
     socket.on("connect", () => {
       setTimeout(() => {
-        const tg = window?.Telegram?.WebApp;
-        const user = tg?.initDataUnsafe?.user;
-        if (user) {
-          console.log("Игрок из Telegram:", user);
-          socket.emit("join", {
-            userId: user.id,
-            username: user.username,
-            firstName: user.first_name,
-            initData: tg?.initData
-          });
-        } else {
-          console.log('No user');
-          return;
-          const userId = getUserId();
-          socket.emit("join", { userId: userId });
-        }
-
+        const user = getUserId();
+        console.log("Игрок:", user);
+        socket.emit("join", {
+          ...getUserId(),
+        });
       }, 500);
 
       socket?.on("itemPicked", (data: { type: string; x: number; y: number }) => {
@@ -550,7 +556,7 @@ class GameScene extends Phaser.Scene {
       for (const id in data.players) {
         const p = data.players[id];
         let sprite: SmoothSprite;
-        if (id === getUserId()) {
+        if (id === getUserId().userId) {
           sprite = player;
           if (!sprite) {
             continue;
@@ -576,7 +582,7 @@ class GameScene extends Phaser.Scene {
 
         if (p?.anim && p.anim !== "" && (sprite.x !== p.x || sprite.y !== p.y)) {
           sprite.play(p.anim, true);
-        } else if (id !== getUserId()) sprite.anims.stop();
+        } else if (id !== getUserId().userId) sprite.anims.stop();
       }
 
       for (const id in otherPlayers) {

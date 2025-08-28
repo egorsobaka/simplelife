@@ -119,6 +119,9 @@ function generateMountains(mapArr: MapTile[][], chunkX: number, chunkY: number, 
   // строим горы сверху вниз
   for (let y = 0; y < MAP_HEIGHT; y++) {
     if (mapArr[y][mountainX].type === "water") continue;
+    if((mapArr[y + 1] && mapArr[y + 1][mountainX].type === "water")) continue;
+    if((mapArr[y - 1] && mapArr[y - 1][mountainX].type === "water")) continue;
+
     if (Math.random() < 0.8) {
       mountainX + 1 < 20 && mountainX++;
     } else
