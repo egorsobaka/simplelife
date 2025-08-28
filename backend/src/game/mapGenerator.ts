@@ -13,8 +13,8 @@ export interface Item {
 }
 
 // глобальные данные для генерации рек и гор по чанкам
-const chunkRivers: Record<string, { positions: number[] }> = {};
-const chunkMountains: Record<string, { x: number }> = {};
+const chunkRivers: Record<string, { positions: number[]; borders: { x: number; y: number }[] }> = {};
+const chunkMountains: Record<string, { ranges: { x: number; y: number }[]; borders: { x: number; y: number }[] }> = {};
 
 // безопасно установить тайл
 function safeSetTile(mapArr: MapTile[][], x: number, y: number, type: string) {
@@ -30,9 +30,43 @@ function safeSetTile(mapArr: MapTile[][], x: number, y: number, type: string) {
 function generateTrees(mapArr: MapTile[][], itemsArr: Item[]) {
   for (let y = 0; y < MAP_HEIGHT; y++) {
     for (let x = 0; x < MAP_WIDTH; x++) {
+      const item = itemsArr.find((item: any) => item.x === x && item.y === y)
+      if (item) {
+        continue;
+      }
       if (mapArr[y][x].type === "forest") {
         if (Math.random() < 0.9) {
           itemsArr.push({ x, y, type: "woodItem" });
+        }
+      }
+      if (mapArr[y][x].type === "tree") {
+        if (Math.random() < 0.3) {
+          itemsArr.push({ x, y, type: "woodItem" });
+        }
+      }
+      if (mapArr[y][x].type === "stone") {
+        if (Math.random() < 0.2) {
+          itemsArr.push({ x, y, type: "woodItem" });
+        }
+      }
+    }
+  }
+}
+
+function generateItems(mapArr: MapTile[][], itemsArr: Item[]) {
+  for (let y = 0; y < MAP_HEIGHT; y++) {
+    for (let x = 0; x < MAP_WIDTH; x++) {
+      if (mapArr[y][x].type === "stone") {
+        const tile = mapArr[y][x];
+        if (!tile) continue;
+        const possibleItems = surfaceItemMap[tile.type];
+        if (!possibleItems || possibleItems.length === 0) continue;
+        if (Math.random() < 0.2) {
+          const type = possibleItems[Math.floor(Math.random() * possibleItems.length)];
+          const item = itemsArr.find((item: any) => item.x === x && item.y === y)
+          if (!item) {
+            itemsArr.push({ x, y, type });
+          }
         }
       }
     }
@@ -51,7 +85,6 @@ function generateForests(mapArr: MapTile[][]) {
           mapArr[gy][gx].type = "forest";
         }
       }
-      // блуждание "пятна леса"
       gx += Math.floor(Math.random() * 3) - 1;
       gy += Math.floor(Math.random() * 3) - 1;
     }
@@ -73,16 +106,27 @@ function generateItemsOnMapBySurface(mapArr: MapTile[][], numItems: number = 15)
   let attempts = 0;
 
   while (itemsArr.length < numItems && attempts < 1000) {
+
     attempts++;
     const x = Math.floor(Math.random() * MAP_WIDTH);
     const y = Math.floor(Math.random() * MAP_HEIGHT);
     const tile = mapArr[y][x];
 
+    const item = itemsArr.find((item: any) => item.x === x && item.y === y)
+    if (item) {
+      continue;
+    }
+
     if (!tile) continue;
     const possibleItems = surfaceItemMap[tile.type];
     if (!possibleItems || possibleItems.length === 0) continue;
 
-    if (Math.random() < 0.5) { // вероятность спавна
+    const m = {
+      "stone": 0.5,
+      "tree": 0.9,
+    }
+
+    if (Math.random() < (m[tile.type] || 0.2)) {
       const type = possibleItems[Math.floor(Math.random() * possibleItems.length)];
       itemsArr.push({ x, y, type });
     }
@@ -92,71 +136,89 @@ function generateItemsOnMapBySurface(mapArr: MapTile[][], numItems: number = 15)
 }
 
 // === генерация гор ===
-function generateMountains(mapArr: MapTile[][], chunkX: number, chunkY: number, riverPositions?: number[]) {
-  const leftKey = `${chunkX - 1}_${chunkY}`;
-  const rightKey = `${chunkX + 1}_${chunkY}`;
-  let mountainX: number;
+function generateMountains(
+  mapArr: MapTile[][],
+  chunkX: number,
+  chunkY: number,
+  riverPositions?: number[]
+) {
+  const key = `${chunkX}_${chunkY}`;
+  const numRanges = Math.floor(Math.random() * 10);
+  const ranges: { x: number; y: number }[] = [];
+  const borders: { x: number; y: number }[] = [];
 
-  // если в соседнем чанке уже есть горы — продолжаем
-  if (chunkMountains[leftKey]) {
-    mountainX = chunkMountains[leftKey].x;
-  } else if (chunkMountains[rightKey]) {
-    mountainX = chunkMountains[rightKey].x;
-  } else {
-    // если есть река — ставим горы на расстоянии ±3–5 клеток от середины
-    if (riverPositions) {
+  for (let r = 0; r < numRanges; r++) {
+    let length = Math.floor(Math.random() * 15) + 15;
+    let x = r*2;
+    let y = Math.floor(Math.random() * MAP_HEIGHT);
+
+    if (riverPositions && riverPositions.length > 0) {
       const midX = Math.floor(riverPositions.length / 2);
-      mountainX = Math.max(2, Math.min(MAP_WIDTH - 3, midX + (Math.random() < 0.5 ? -4 : 4)));
-    } else {
-      // случайно по центру
-      mountainX = Math.floor(MAP_WIDTH / 2) + Math.floor(Math.random() * 5) - 2;
+      x = Math.max(0, Math.min(MAP_WIDTH - 1, midX + (Math.random() < 0.5 ? -8 : 8)));
     }
+
+    while (length > 0 && x < MAP_WIDTH) {
+      if (!mapArr[y] || !mapArr[y][x]) break;
+      if (mapArr[y][x].type === "water") {
+        if (y > 0 && mapArr[y - 1][x].type !== "water") {
+          y -= 3;
+        } else if (y < MAP_HEIGHT - 1 && mapArr[y + 1][x].type !== "water") {
+          y += 3;
+        } else {
+          x++;
+          continue;
+        }
+      }
+
+      let isRock = Math.random() < 0.7;
+
+      if (isRock) {
+        safeSetTile(mapArr, x, y, "rock");
+        // вокруг скалы — камни
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx;
+            const ny = y + dy;
+            if (mapArr[ny] && mapArr[ny][nx] && mapArr[ny][nx].type === "grass") {
+              safeSetTile(mapArr, nx, ny, "stone");
+            }
+          }
+        }
+      } else {
+        safeSetTile(mapArr, x, y, "stone");
+        // вокруг камня — лес
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx;
+            const ny = y + dy;
+            if (mapArr[ny] && mapArr[ny][nx] && mapArr[ny][nx].type === "grass") {
+              safeSetTile(mapArr, nx, ny, "forest");
+            }
+          }
+        }
+      }
+
+      if (x === MAP_WIDTH - 1 || y === MAP_HEIGHT - 1) {
+        borders.push({ x, y });
+      }
+
+      x++;
+      length--;
+    }
+
+    ranges.push({ x, y });
   }
 
-  // сохранить горы для текущего чанка
-  chunkMountains[`${chunkX}_${chunkY}`] = { x: mountainX };
-
-  // строим горы сверху вниз
-  for (let y = 0; y < MAP_HEIGHT; y++) {
-    if (mapArr[y][mountainX].type === "water") continue;
-    if((mapArr[y + 1] && mapArr[y + 1][mountainX].type === "water")) continue;
-    if((mapArr[y - 1] && mapArr[y - 1][mountainX].type === "water")) continue;
-
-    if (Math.random() < 0.8) {
-      mountainX + 1 < 20 && mountainX++;
-    } else
-      if (Math.random() < 0.3) {
-        mountainX - 1 >= 0 && mountainX--;
-      }
-    if (Math.random() < 0.8) {
-      safeSetTile(mapArr, mountainX, y, "rock");
-      if (mapArr[y - 1] && mapArr[y - 1][mountainX].type !== "rock") {
-        safeSetTile(mapArr, mountainX, y - 1, "stone");
-      }
-      if (mapArr[y + 1] && mapArr[y + 1][mountainX].type !== "rock") {
-        safeSetTile(mapArr, mountainX, y + 1, "stone");
-      }
-    } else {
-      safeSetTile(mapArr, mountainX, y, "stone");
-    }
-
-    safeSetTile(mapArr, mountainX - 1, y, "stone");
-    safeSetTile(mapArr, mountainX + 1, y, "stone");
-
-    if (mountainX - 2 >= 0 && mapArr[y][mountainX - 2].type === "grass") {
-      safeSetTile(mapArr, mountainX - 2, y, "forest");
-    }
-    if (mountainX + 2 < MAP_WIDTH && mapArr[y][mountainX + 2].type === "grass") {
-      safeSetTile(mapArr, mountainX + 2, y, "forest");
-    }
-  }
+  chunkMountains[key] = { ranges, borders };
 }
+
 
 export function generateMap(chunkX: number, chunkY: number): { map: MapTile[][]; items: Item[] } {
   const mapArr: MapTile[][] = [];
   const itemsArr: Item[] = [];
 
-  // создаём карту с травой
   for (let y = 0; y < MAP_HEIGHT; y++) {
     mapArr[y] = [];
     for (let x = 0; x < MAP_WIDTH; x++) {
@@ -166,6 +228,9 @@ export function generateMap(chunkX: number, chunkY: number): { map: MapTile[][];
 
   const leftKey = `${chunkX - 1}_${chunkY}`;
   const rightKey = `${chunkX + 1}_${chunkY}`;
+  const topKey = `${chunkX}_${chunkY - 1}`;
+  const bottomKey = `${chunkX}_${chunkY + 1}`;
+
   let riverPositions: number[] | undefined;
 
   if (chunkRivers[leftKey] || chunkRivers[rightKey] || (chunkY % 3 === 0)) {
@@ -174,55 +239,31 @@ export function generateMap(chunkX: number, chunkY: number): { map: MapTile[][];
     if (chunkRivers[leftKey]) {
       entryY = chunkRivers[leftKey].positions[MAP_WIDTH - 1];
     } else if (chunkRivers[rightKey]) {
-      entryY = chunkRivers[rightKey].positions[MAP_WIDTH - 1];
+      entryY = chunkRivers[rightKey].positions[0];
+    } else if (chunkRivers[topKey]) {
+      entryY = chunkRivers[topKey].positions[MAP_HEIGHT - 1];
     }
 
     riverPositions = [];
     let ry = entryY;
 
     for (let x = 0; x < MAP_WIDTH; x++) {
-      const top = ry - 1;
-      const center = ry;
-      const bottom = ry + 1;
+      safeSetTile(mapArr, x, ry - 1, "water");
+      safeSetTile(mapArr, x, ry, "water");
+      safeSetTile(mapArr, x, ry + 1, "water");
 
-      safeSetTile(mapArr, x, top, "water");
-      safeSetTile(mapArr, x, center, "water");
-      safeSetTile(mapArr, x, bottom, "water");
-
-      if (top > 0) safeSetTile(mapArr, x, top - 1, "shore_top");
-      if (bottom < MAP_HEIGHT - 1) safeSetTile(mapArr, x, bottom + 1, "shore_bottom");
-
-      if (x === 0) safeSetTile(mapArr, x, center, "shore_left");
-      if (x === MAP_WIDTH - 1) safeSetTile(mapArr, x, center, "shore_right");
-
-      riverPositions.push(center);
-
-      if (Math.random() < 0.4) ry += Math.floor(Math.random() * 3) - 1;
+      riverPositions.push(ry);
+      if (Math.random() < 0.7) ry += Math.floor(Math.random() * 3) - 1;
       ry = Math.max(1, Math.min(MAP_HEIGHT - 2, ry));
     }
 
-    chunkRivers[`${chunkX}_${chunkY}`] = { positions: riverPositions };
-
-    // мостик из песка
-    const bridgeX = Math.floor(Math.random() * MAP_WIDTH);
-    const bridgeY = riverPositions[bridgeX];
-    for (let dy = -2; dy <= 2; dy++) {
-      if (bridgeY + dy > 0 && bridgeY + dy < MAP_HEIGHT) {
-        safeSetTile(mapArr, bridgeX, bridgeY + dy, "sand");
-      }
-    }
+    chunkRivers[`${chunkX}_${chunkY}`] = { positions: riverPositions, borders: [{ x: MAP_WIDTH - 1, y: ry }] };
   }
 
-  // горы (перпендикулярно реке)
   generateMountains(mapArr, chunkX, chunkY, riverPositions);
-
-  // расширяем лес внутри карты
   generateForests(mapArr);
-
-  // генерируем деревья на лесных клетках
   generateTrees(mapArr, itemsArr);
-
-  // генерируем предметы по тайлам
+  generateItems(mapArr, itemsArr);
   const surfaceItems = generateItemsOnMapBySurface(mapArr, 20);
   itemsArr.push(...surfaceItems);
 
