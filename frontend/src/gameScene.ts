@@ -288,13 +288,17 @@ class GameScene extends Phaser.Scene {
   }
 
   createJoystick() {
-    const size = 60;
-    const alpha = 0.3;
-    const baseX = size + 20;
-    const baseY = this.scale.height - size - 20;
+    const { width, height } = this.scale;
+    const centerX = width / 2;
+    const centerY = height / 2;
 
-    this.joystickBase = this.add.circle(baseX, baseY, size, 0x0000ff, alpha).setScrollFactor(0).setDepth(1000);
-    this.joystickThumb = this.add.circle(baseX, baseY, size / 2, 0x00ff00, alpha).setScrollFactor(0).setInteractive().setDepth(1001);
+    const size = 80;
+    const alpha = 0.3;
+    // const baseX = size + 20;
+    // const baseY = this.scale.height - size - 20;
+
+    this.joystickBase = this.add.circle(centerX, centerY, size, 0x0000ff, 0.1).setScrollFactor(0).setDepth(1000);
+    this.joystickThumb = this.add.circle(centerX, centerY, size / 2, 0x00ff00, alpha).setScrollFactor(0).setInteractive().setDepth(1001);
 
     this.joystickThumb.on("pointerdown", () => this.joystickThumb.setData("dragging", true));
     this.input.on("pointerup", () => {
@@ -319,6 +323,26 @@ class GameScene extends Phaser.Scene {
 
       mobileDir.x = (limitedDist / maxDist) * Math.cos(angle);
       mobileDir.y = (limitedDist / maxDist) * Math.sin(angle);
+    });
+
+    this.joystickThumb.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (!player) return;
+
+      let tileX = Math.floor((player.x + (pointer.x - centerX)) / TILE_SIZE) % 20;
+      let tileY = Math.floor((player.y + (pointer.y - centerY)) / TILE_SIZE) % 20;
+
+      console.log(tileX, tileY);
+
+      if (tileX < 0) tileX += 20;
+      if (tileY < 0) tileY += 20;
+
+      // добавляем в буфер
+      const existing = this.chopBuffer.find(t => t.tileX === tileX && t.tileY === tileY);
+      if (existing) {
+        existing.count++;
+      } else {
+        this.chopBuffer.push({ tileX, tileY, count: 1 });
+      }
     });
   }
 
@@ -389,36 +413,18 @@ class GameScene extends Phaser.Scene {
   }
 
   createChopZone() {
-    const { width, height } = this.scale;
-    const zoneSize = 80; // размер зоны рубки
-    const centerX = width / 2;
-    const centerY = height / 2;
+    // const { width, height } = this.scale;
+    // const zoneSize = 80; // размер зоны рубки
+    // const centerX = width / 2;
+    // const centerY = height / 2;
 
-    this.chopZone = this.add.rectangle(centerX, centerY, zoneSize, zoneSize, 0xff00ff, 0.1)
-      .setOrigin(0.5)
-      .setInteractive()
-      .setScrollFactor(0)
-      .setDepth(10000);
+    // this.chopZone = this.add.rectangle(centerX, centerY, zoneSize, zoneSize, 0xff00ff, 0.1)
+    //   .setOrigin(0.5)
+    //   .setInteractive()
+    //   .setScrollFactor(0)
+    //   .setDepth(10000);
 
-    this.chopZone.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      if (!player) return;
 
-      let tileX = Math.floor((player.x + (pointer.x - centerX)) / TILE_SIZE) % 20;
-      let tileY = Math.floor((player.y + (pointer.y - centerY)) / TILE_SIZE) % 20;
-
-      console.log(tileX, tileY);
-
-      if (tileX < 0) tileX += 20;
-      if (tileY < 0) tileY += 20;
-
-      // добавляем в буфер
-      const existing = this.chopBuffer.find(t => t.tileX === tileX && t.tileY === tileY);
-      if (existing) {
-        existing.count++;
-      } else {
-        this.chopBuffer.push({ tileX, tileY, count: 1 });
-      }
-    });
 
     this.time.addEvent({
       delay: 500,
