@@ -49,7 +49,7 @@ function canMoveTo(x: number, y: number) {
 
   // запрещённые тайлы
   const blockedTiles = ["water", "shore_top", "shore_bottom", "shore_left", "shore_right", "rock"];
-  const blockedItems = ["woodItem"];
+  const blockedItems = ["woodItem", "rock", "iron_ore", "copper_ore", "gold_ore"];
   const itemType: any = chunk.items.find((item) => item.x === localX && item.y === localY)?.type;
   return !blockedTiles.includes(tileType) && !blockedItems.includes(itemType);
 }

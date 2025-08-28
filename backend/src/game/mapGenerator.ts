@@ -140,7 +140,8 @@ function generateMountains(
   mapArr: MapTile[][],
   chunkX: number,
   chunkY: number,
-  riverPositions?: number[]
+  riverPositions?: number[],
+  itemsArr?: any,
 ) {
   const key = `${chunkX}_${chunkY}`;
   const numRanges = Math.floor(Math.random() * 10);
@@ -174,6 +175,7 @@ function generateMountains(
 
       if (isRock) {
         safeSetTile(mapArr, x, y, "rock");
+        itemsArr.push({ x, y, type: "rock" });
         // вокруг скалы — камни
         for (let dx = -1; dx <= 1; dx++) {
           for (let dy = -1; dy <= 1; dy++) {
@@ -260,7 +262,7 @@ export function generateMap(chunkX: number, chunkY: number): { map: MapTile[][];
     chunkRivers[`${chunkX}_${chunkY}`] = { positions: riverPositions, borders: [{ x: MAP_WIDTH - 1, y: ry }] };
   }
 
-  generateMountains(mapArr, chunkX, chunkY, riverPositions);
+  generateMountains(mapArr, chunkX, chunkY, riverPositions, itemsArr);
   generateForests(mapArr);
   generateTrees(mapArr, itemsArr);
   generateItems(mapArr, itemsArr);

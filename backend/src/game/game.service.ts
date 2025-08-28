@@ -247,7 +247,7 @@ export class GameService {
     if (foundIndex >= 0) {
       const item = chunk.items[foundIndex];
 
-      if (["woodItem"].includes(item.type)) {
+      if (["woodItem", "rock", "iron_ore", "copper_ore", "gold_ore"].includes(item.type)) {
         return;
       }
 

@@ -77,7 +77,7 @@ export function getTileFrame(type: string): number {
     shore_left: 60,
     shore_right: 62,
     forest: 66, // Например, это индекс для леса
-    rock: 233,
+    rock: 7,
   };
   return TILE_INDEX[type] ?? 7;
 }
@@ -85,6 +85,7 @@ export function getTileFrame(type: string): number {
 // === frame для предметов ===
 export function getItemFrame(type: string): number {
   const ITEM_INDEX: Record<string, number> = {
+    rock: 1251,
     wood: 1307,
     reed: 649,
     hide: 140,
@@ -92,14 +93,14 @@ export function getItemFrame(type: string): number {
     fiber: 535,
     herb: 592,
     woodItem: 528,
-    stoneItem: 1034,
-    ironOre: 1251,
-    stone: 1016, // Например, это индекс для камня
+    stoneItem: 614,
+    ironOre: 1308,
+    stone: 614, // Например, это индекс для камня
     eggItem: 563, // Например, это индекс для яйца
-    iron_ore: 1251, // Например, это индекс для железной руды
-    copper_ore: 1194, // Например, это индекс для медной руды
+    iron_ore: 1310, // Например, это индекс для железной руды
+    copper_ore: 1309, // Например, это индекс для медной руды
     gold_ore: 615,
-    tin_ore: 602, // Например, это индекс для оловянной руды
+    tin_ore: 1194, // Например, это индекс для оловянной руды
     sand: 603,
     clay: 1137,
     cotton: 606,

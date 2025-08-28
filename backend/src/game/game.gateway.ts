@@ -69,16 +69,26 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const chunk = this.mapService.getChunk(data.chunkX, data.chunkY);
     if (!chunk) return;
 
-    let totalWood = 0;
+    let total = {
+      "woodItem": 0,
+      "rock": 0,
+      "iron_ore": 0,
+      "copper_ore": 0,
+      "gold_ore": 0
+    };
+
+    console.log(data.taps)
 
     data.taps.forEach(tap => {
       const mapItem = chunk.items.find(item => item.x === tap.tileX && item.y === tap.tileY);
       if (!mapItem) return;
 
-      if (mapItem.type === 'woodItem') {
+      console.log(mapItem)
+
+      if (["woodItem", "iron_ore", "copper_ore", "gold_ore"].includes(mapItem.type)) {
         // добавляем ресурсы игроку
-        this.gameService.addItemToInventory(clientId, 'wood', tap.count);
-        totalWood += tap.count;
+        this.gameService.addItemToInventory(clientId, mapItem.type, tap.count);
+        total[mapItem.type] += tap.count;
 
         // удаляем тайл с карты
         chunk.items = chunk.items.filter(item => !(item.x === tap.tileX && item.y === tap.tileY));
@@ -88,9 +98,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     });
 
-    if (totalWood > 0) {
-      client.emit('chopped', { item: 'wood', amount: totalWood, inventory: this.gameService.getPlayerInventory(clientId) });
+    for (const totalWood of Object.keys(total)) {
+      if (total[totalWood] > 0) {
+        client.emit('chopped', { item: totalWood, amount: total[totalWood], inventory: this.gameService.getPlayerInventory(clientId) });
+      }
     }
+
+
   }
 
   @SubscribeMessage('move')
