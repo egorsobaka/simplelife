@@ -67,17 +67,17 @@ export function loadChunkFromServer(scene: Phaser.Scene, key: string, data: Chun
 export function getTileFrame(type: string): number {
   const TILE_INDEX: Record<string, number> = {
     // Вставьте сюда индексы для тайлов
-    grass: 5, // Например, это индекс для травы
+    grass: 1695, // Например, это индекс для травы
     water: 0, // Например, это индекс для воды
-    tree: 628, // Например, это индекс для дерева
-    stone: 7, // Например, это индекс для камня
+    tree: 5, // Например, это индекс для дерева
+    stone: 66, // Например, это индекс для камня
     sand: 8, // Например, это индекс для песка
     shore_top: 3,
     shore_bottom: 117,
     shore_left: 60,
     shore_right: 62,
-    forest: 66, // Например, это индекс для леса
-    rock: 7,
+    forest: 5, // Например, это индекс для леса
+    rock: 66,
   };
   return TILE_INDEX[type] ?? 7;
 }

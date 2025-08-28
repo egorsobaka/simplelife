@@ -13,7 +13,7 @@ export class InventoryScene extends Phaser.Scene {
 
   preload() {
     // Здесь можно загрузить спрайты для предметов, например:
-    // this.load.spritesheet("items", "path/to/items.png", { frameWidth: 32, frameHeight: 32 });
+    
   }
 
   create() {
@@ -71,7 +71,7 @@ export class InventoryScene extends Phaser.Scene {
     const y = row * (spriteSize + padding);
 
     const frame = getItemFrame(item.type);
-    const sprite = this.add.sprite(x, y, "tiles", frame)
+    const sprite = this.add.sprite(x, y, "items", frame)
       .setInteractive()
       .setOrigin(0, 0)
       .setScale(1.2);

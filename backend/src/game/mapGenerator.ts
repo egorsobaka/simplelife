@@ -150,7 +150,7 @@ function generateMountains(
 
   for (let r = 0; r < numRanges; r++) {
     let length = Math.floor(Math.random() * 15) + 15;
-    let x = r*2;
+    let x = r * 2;
     let y = Math.floor(Math.random() * MAP_HEIGHT);
 
     if (riverPositions && riverPositions.length > 0) {
@@ -258,6 +258,9 @@ export function generateMap(chunkX: number, chunkY: number): { map: MapTile[][];
       if (Math.random() < 0.7) ry += Math.floor(Math.random() * 3) - 1;
       ry = Math.max(1, Math.min(MAP_HEIGHT - 2, ry));
     }
+
+    safeSetTile(mapArr, MAP_WIDTH - 1, ry - 2, "water");
+    safeSetTile(mapArr, MAP_WIDTH - 1, ry + 2, "water");
 
     chunkRivers[`${chunkX}_${chunkY}`] = { positions: riverPositions, borders: [{ x: MAP_WIDTH - 1, y: ry }] };
   }
