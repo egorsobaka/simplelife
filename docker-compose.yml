@@ -12,7 +12,7 @@ services:
     env_file:
       - ./backend/.env
     depends_on:
-      - postgres
+      - mongodb  # добавляем зависимость от MongoDB
 
   frontend:
     container_name: phaser-frontend
@@ -25,18 +25,20 @@ services:
     depends_on:
       - backend
 
-  postgres:
-    container_name: game-db
-    image: postgres:15
+  mongodb:
+    container_name: game-mongodb
+    image: mongo:6
     restart: always
     ports:
-      - "5432:5432"
+      - "27017:27017"
     environment:
-      POSTGRES_USER: game_user
-      POSTGRES_PASSWORD: game_pass
-      POSTGRES_DB: game_db
+      MONGO_INITDB_ROOT_USERNAME: mongo_user
+      MONGO_INITDB_ROOT_PASSWORD: mongo_pass
+      MONGO_INITDB_DATABASE: game_data
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
 
 volumes:
-  postgres_data:
+  mongodb_data:
+  mongodb_config:

@@ -1,6 +1,9 @@
 // map.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { generateMap } from './mapGenerator.js';
+import { ChunkDocument } from './chunk.schema';
 
 export interface ChunkData {
   tiles: { type: string }[][];
@@ -8,14 +11,121 @@ export interface ChunkData {
 }
 
 @Injectable()
-export class MapService {
+export class MapService implements OnModuleInit, OnModuleDestroy {
   private loadedChunks: Record<string, ChunkData> = {};
-  private readonly CHUNK_SIZE_IN_TILES = 20; // 20x20, как в вашем коде
+  private readonly CHUNK_SIZE_IN_TILES = 20;
+  private readonly SAVE_INTERVAL = 1000 * 60 * 5;
+  private saveInterval: NodeJS.Timeout;
 
-  generateMap(chunkX: number, chunkY: number): ChunkData {
+  constructor(
+    @InjectModel('Chunk') private readonly chunkModel: Model<ChunkDocument>
+  ) {}
+
+  async onModuleInit() {
+    await this.loadInitialChunks();
+    
+    this.saveInterval = setInterval(() => {
+      this.saveAllChunks();
+    }, this.SAVE_INTERVAL);
+  }
+
+  onModuleDestroy() {
+    if (this.saveInterval) clearInterval(this.saveInterval);
+    this.saveAllChunks();
+  }
+
+  private async loadInitialChunks() {
+    try {
+      const initialChunks = await this.chunkModel.find({
+        $or: [
+          { chunkX: { $gte: -1, $lte: 1 }, chunkY: { $gte: -1, $lte: 1 } }
+        ]
+      }).exec();
+
+      initialChunks.forEach(chunkDoc => {
+        const key = `${chunkDoc.chunkX}_${chunkDoc.chunkY}`;
+        this.loadedChunks[key] = {
+          tiles: chunkDoc.tiles,
+          items: chunkDoc.items
+        };
+      });
+
+      console.log(`Загружено ${initialChunks.length} чанков из MongoDB`);
+    } catch (error) {
+      console.error('Ошибка загрузки чанков из MongoDB:', error);
+    }
+  }
+
+  private async saveAllChunks() {
+    try {
+      const savePromises = Object.entries(this.loadedChunks).map(async ([key, chunkData]) => {
+        const [chunkX, chunkY] = key.split('_').map(Number);
+        
+        const chunkDoc = {
+          chunkX,
+          chunkY,
+          tiles: chunkData.tiles,
+          items: chunkData.items,
+          lastUpdated: new Date()
+        };
+
+        await this.chunkModel.findOneAndUpdate(
+          { chunkX, chunkY },
+          chunkDoc,
+          { upsert: true, new: true }
+        );
+      });
+
+      await Promise.all(savePromises);
+      console.log(`Сохранено ${Object.keys(this.loadedChunks).length} чанков в MongoDB`);
+    } catch (error) {
+      console.error('Ошибка сохранения чанков в MongoDB:', error);
+    }
+  }
+
+  private async saveChunk(chunkX: number, chunkY: number) {
+    try {
+      const key = `${chunkX}_${chunkY}`;
+      const chunkData = this.loadedChunks[key];
+      if (!chunkData) return;
+
+      const chunkDoc = {
+        chunkX,
+        chunkY,
+        tiles: chunkData.tiles,
+        items: chunkData.items,
+        lastUpdated: new Date()
+      };
+
+      await this.chunkModel.findOneAndUpdate(
+        { chunkX, chunkY },
+        chunkDoc,
+        { upsert: true, new: true }
+      );
+    } catch (error) {
+      console.error(`Ошибка сохранения чанка ${chunkX}_${chunkY}:`, error);
+    }
+  }
+
+  async generateMap(chunkX: number, chunkY: number): Promise<ChunkData> {
     const key = `${chunkX}_${chunkY}`;
     if (this.loadedChunks[key]) return this.loadedChunks[key];
 
+    // Пытаемся загрузить из БД
+    try {
+      const chunkFromDb = await this.chunkModel.findOne({ chunkX, chunkY }).exec();
+      if (chunkFromDb) {
+        this.loadedChunks[key] = {
+          tiles: chunkFromDb.tiles,
+          items: chunkFromDb.items
+        };
+        return this.loadedChunks[key];
+      }
+    } catch (error) {
+      console.error(`Ошибка загрузки чанка ${key} из MongoDB:`, error);
+    }
+
+    // Генерируем новый чанк
     const { map, items } = generateMap(chunkX, chunkY);
 
     const tiles = map.map(row => row.map(tile => ({ type: tile.type })));
@@ -23,34 +133,45 @@ export class MapService {
 
     const chunkData: ChunkData = { tiles, items: serializedItems };
     this.loadedChunks[key] = chunkData;
+
+    await this.saveChunk(chunkX, chunkY);
+
     return chunkData;
   }
 
-  getChunk(chunkX: number, chunkY: number): ChunkData | null {
+  async getChunk(chunkX: number, chunkY: number): Promise<ChunkData | null> {
     const key = `${chunkX}_${chunkY}`;
-    // Используем `this.generateMap` для создания чанка, если он не существует.
-    // Это гарантирует, что мы всегда получим либо существующий, либо новый чанк.
-    return this.loadedChunks[key] ?? this.generateMap(chunkX, chunkY);
+    return this.loadedChunks[key] ?? await this.generateMap(chunkX, chunkY);
   }
 
-  getChunksAround(cx: number, cy: number): Record<string, ChunkData> {
+  async getChunksAround(cx: number, cy: number): Promise<Record<string, ChunkData>> {
     const chunks: Record<string, ChunkData> = {};
+    
+    const loadPromises = [];
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
-        const key = `${cx + dx}_${cy + dy}`;
-        chunks[key] = this.generateMap(cx + dx, cy + dy);
+        const chunkX = cx + dx;
+        const chunkY = cy + dy;
+        const key = `${chunkX}_${chunkY}`;
+        
+        loadPromises.push(
+          this.getChunk(chunkX, chunkY).then(chunk => {
+            if (chunk) {
+              chunks[key] = chunk;
+            }
+          })
+        );
       }
     }
+
+    await Promise.all(loadPromises);
     return chunks;
   }
 
-  /**
-   * Добавляет предмет на карту в указанные тайловые координаты.
-   */
-  addItemToMap(chunkX: number, chunkY: number, tileX: number, tileY: number, itemType: string): { chunk: string, x: number, y: number, type: string } | null {
+  // Остальные методы остаются без изменений
+  async addItemToMap(chunkX: number, chunkY: number, tileX: number, tileY: number, itemType: string): Promise<{ chunk: string, x: number, y: number, type: string } | null> {
     const key = `${chunkX}_${chunkY}`;
-
-    const chunk = this.getChunk(chunkX, chunkY);
+    const chunk = await this.getChunk(chunkX, chunkY);
     if (!chunk) return null;
 
     let tileXInChunk = tileX % this.CHUNK_SIZE_IN_TILES;
@@ -58,15 +179,6 @@ export class MapService {
 
     tileXInChunk = (tileXInChunk < 0 ? this.CHUNK_SIZE_IN_TILES + tileXInChunk : tileXInChunk);
     tileYInChunk = (tileYInChunk < 0 ? this.CHUNK_SIZE_IN_TILES + tileYInChunk : tileYInChunk);
-
-    console.log("tileXInChunk", tileXInChunk, tileYInChunk)
-
-    // Проверяем, не занят ли уже этот тайл
-    // const occupied = chunk.items.some(i => i.x === tileXInChunk && i.y === tileYInChunk);
-    // if (occupied) {
-    //   console.log(`Не удалось добавить предмет ${itemType} на координаты ${x}, ${y}: место занято.`);
-    //   return null;
-    // }
 
     if (tileXInChunk + 1 <= this.CHUNK_SIZE_IN_TILES) {
       tileXInChunk = tileXInChunk + 1;
@@ -79,8 +191,10 @@ export class MapService {
     }
 
     const newItem = { x: tileXInChunk, y: tileYInChunk, type: itemType };
-    console.log("newItem", newItem);
     chunk.items.push(newItem);
+
+    await this.saveChunk(chunkX, chunkY);
+
     return {
       chunk: key,
       x: newItem.x,
@@ -89,17 +203,14 @@ export class MapService {
     };
   }
 
-  /**
-   * Удаляет предмет из чанка (при сборе игроком).
-   * Возвращает true, если предмет был найден и удалён.
-   */
-  removeItem(chunkX: number, chunkY: number, itemX: number, itemY: number): { type: string } | null {
-    const chunk = this.getChunk(chunkX, chunkY);
+  async removeItem(chunkX: number, chunkY: number, itemX: number, itemY: number): Promise<{ type: string } | null> {
+    const chunk = await this.getChunk(chunkX, chunkY);
     if (!chunk) return null;
 
     const index = chunk.items.findIndex(i => i.x === itemX && i.y === itemY);
     if (index >= 0) {
       const [removed] = chunk.items.splice(index, 1);
+      await this.saveChunk(chunkX, chunkY);
       return { type: removed.type };
     }
     return null;

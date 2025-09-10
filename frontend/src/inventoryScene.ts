@@ -71,7 +71,7 @@ export class InventoryScene extends Phaser.Scene {
     const y = row * (spriteSize + padding);
 
     const frame = getItemFrame(item.type);
-    const sprite = this.add.sprite(x, y, "items", frame)
+    const sprite = this.add.sprite(x, y, "tiles", frame)
       .setInteractive()
       .setOrigin(0, 0)
       .setScale(1.2);

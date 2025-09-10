@@ -66,7 +66,7 @@ class GameScene extends Phaser.Scene {
   preload() {
     this.load.spritesheet("tiles", "/roguelikeSheet_transparent.png", { frameWidth: 16, frameHeight: 16, spacing: 1 });
     this.load.spritesheet("player", "/character_maleAdventurer_sheet.png", { frameWidth: 96, frameHeight: 128 });
-    this.load.spritesheet("items", "/items-sprite-1.png.png", { frameWidth: 32, frameHeight: 32 });
+    // this.load.spritesheet("items", "/items-sprite-1.png", { frameWidth: 32, frameHeight: 32 });
   }
 
   create() {
@@ -171,7 +171,7 @@ class GameScene extends Phaser.Scene {
       // берём фрейм по типу предмета
       const frame = getItemFrame(item.name);
 
-      const sprite = this.add.sprite(x, y, "items", frame)
+      const sprite = this.add.sprite(x, y, "tiles", frame)
         .setInteractive()
         .setScrollFactor(0)
         .setDepth(2000)

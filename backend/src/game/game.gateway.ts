@@ -47,15 +47,15 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.sendSnapshot(client);
   }
 
-  handleDisconnect(@ConnectedSocket() client: Socket) {
+  async handleDisconnect(@ConnectedSocket() client: Socket) {
     const clientId = client.id;
     if (!clientId) return;
-    this.gameService.removePlayer(clientId);
+    await this.gameService.removePlayer(clientId);
     this.broadcastSnapshot();
   }
 
   @SubscribeMessage('chopTiles')
-  handleChopTiles(
+  async handleChopTiles(
     @MessageBody() data: { chunkX: number; chunkY: number; taps: ChopTap[] },
     @ConnectedSocket() client: Socket
   ) {
@@ -66,7 +66,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!playerState) return;
 
     const chunkId = `${data.chunkX}_${data.chunkY}`;
-    const chunk = this.mapService.getChunk(data.chunkX, data.chunkY);
+    const chunk = await this.mapService.getChunk(data.chunkX, data.chunkY);
     if (!chunk) return;
 
     let total = {
@@ -122,7 +122,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('requestChunks')
-  handleRequestChunks(
+  async handleRequestChunks(
     @MessageBody() data: { cx: number; cy: number },
     @ConnectedSocket() client: Socket,
   ) {
@@ -134,7 +134,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       for (let dy = -1; dy <= 1; dy++) {
         const x = data.cx + dx;
         const y = data.cy + dy;
-        const chunkData = this.mapService.generateMap(x, y);
+        const chunkData = await this.mapService.generateMap(x, y);
         chunks[`${x}_${y}`] = chunkData;
       }
     }
@@ -147,7 +147,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('dropItem')
-  handleDropItem(
+  async handleDropItem(
     @MessageBody() data: { itemType: string },
     @ConnectedSocket() client: Socket,
   ) {
@@ -159,7 +159,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const playerState = this.gameService.getPlayer(clientId);
     if (!playerState) return;
 
-    const droppedItem = this.gameService.dropItem(clientId, data.itemType);
+    const droppedItem = await this.gameService.dropItem(clientId, data.itemType);
 
     if (droppedItem) {
       this.server.emit('itemDropped', droppedItem);
@@ -184,12 +184,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('join')
-  handleJoin(
+  async handleJoin(
     @MessageBody() data: { userId: any; initData: string },
     @ConnectedSocket() client: Socket,
   ) {
     if (!data?.initData) {
-      const spawn = this.gameService.addPlayer(client.id, data.userId);
+      const spawn = await this.gameService.addPlayer(client.id, data.userId);
       client.emit('spawn', spawn);
       return;
     }

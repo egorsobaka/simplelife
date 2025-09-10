@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { MapService, ChunkData } from './map.service';
 import { Server } from 'socket.io';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 
 interface Player {
+  lastSaveTime: number;
   id: string;
   x: number;
   y: number;
@@ -12,6 +15,23 @@ interface Player {
   chunk?: any;
 }
 
+// Интерфейс для документа MongoDB
+interface PlayerDocument {
+  telegramId: string;
+  x: number;
+  y: number;
+  anim: string;
+  inventory: string[];
+  lastChunk: {
+    chunkX: number;
+    chunkY: number;
+    tileX: number;
+    tileY: number;
+  };
+  lastUpdated: Date;
+}
+
+
 @Injectable()
 export class GameService {
   private players: Record<string, Player> = {};
@@ -20,10 +40,15 @@ export class GameService {
   private itemSpawnInterval: NodeJS.Timeout;
   private server: Server;
   private socketToTelegram: Record<string, string> = {}; // маппинг socketId -> telegramId
+  private readonly SAVE_INTERVAL = 1000 * 60; // Сохраняем каждую минуту
 
-  constructor(private readonly mapService: MapService) { }
+  constructor(
+    private readonly mapService: MapService,
+    @InjectModel('Player') private readonly playerModel: Model<PlayerDocument>
+  ) { }
 
-  onModuleInit() {
+  async onModuleInit() {
+    await this.loadAllPlayers();
     setInterval(() => {
       this.spawnRandomItems(10);
     }, 1000 * 3600);
@@ -39,6 +64,7 @@ export class GameService {
 
   onModuleDestroy() {
     if (this.itemSpawnInterval) clearInterval(this.itemSpawnInterval);
+    this.saveAllPlayers();
   }
 
   /**
@@ -48,25 +74,139 @@ export class GameService {
     this.server = server;
   }
 
+  private async loadAllPlayers() {
+    try {
+      const playersFromDb = await this.playerModel.find().exec();
+
+      playersFromDb.forEach(playerDoc => {
+        this.players[playerDoc.telegramId] = {
+          id: playerDoc.telegramId,
+          x: playerDoc.x,
+          y: playerDoc.y,
+          anim: playerDoc.anim,
+          socketId: '',
+          inventory: playerDoc.inventory,
+          chunk: playerDoc.lastChunk,
+          lastSaveTime: 0,
+        };
+      });
+
+      console.log(`Загружено ${playersFromDb.length} игроков из MongoDB`);
+    } catch (error) {
+      console.error('Ошибка загрузки игроков из MongoDB:', error);
+    }
+  }
+
+  private async saveAllPlayers() {
+    try {
+      const savePromises = Object.values(this.players).map(async (player) => {
+        if (!player.id) return;
+
+        const playerData = {
+          telegramId: player.id,
+          x: player.x,
+          y: player.y,
+          anim: player.anim,
+          inventory: player.inventory,
+          lastChunk: player.chunk || { chunkX: 0, chunkY: 0, tileX: 0, tileY: 0 },
+          lastUpdated: new Date()
+        };
+
+        await this.playerModel.findOneAndUpdate(
+          { telegramId: player.id },
+          playerData,
+          { upsert: true, new: true }
+        );
+      });
+
+      await Promise.all(savePromises);
+      console.log(`Сохранено ${Object.keys(this.players).length} игроков в MongoDB`);
+    } catch (error) {
+      console.error('Ошибка сохранения игроков в MongoDB:', error);
+    }
+  }
+
+  private async savePlayer(telegramId: string) {
+    try {
+      const player = this.players[telegramId];
+      if (!player) return;
+
+      const playerData = {
+        telegramId: player.id,
+        x: player.x,
+        y: player.y,
+        anim: player.anim,
+        inventory: player.inventory,
+        lastChunk: player.chunk || { chunkX: 0, chunkY: 0, tileX: 0, tileY: 0 },
+        lastUpdated: new Date()
+      };
+
+      await this.playerModel.findOneAndUpdate(
+        { telegramId: player.id },
+        playerData,
+        { upsert: true, new: true }
+      );
+    } catch (error) {
+      console.error(`Ошибка сохранения игрока ${telegramId}:`, error);
+    }
+  }
+
   /**
  * Добавляет нового игрока или возвращает уже существующего.
  */
-  addPlayer(socketId: string, telegramId: string) {
+  async addPlayer(socketId: string, telegramId: string) {
     if (this.players[telegramId]) {
       this.socketToTelegram[socketId] = telegramId;
       this.players[telegramId].socketId = socketId;
+
+      await this.savePlayer(telegramId);
+
       return {
         x: this.players[telegramId].x,
         y: this.players[telegramId].y,
       };
     }
 
+    let playerFromDb: PlayerDocument = null;
+    try {
+      playerFromDb = await this.playerModel.findOne({ telegramId }).exec();
+    } catch (error) {
+      console.error('Ошибка поиска игрока в MongoDB:', error);
+    }
+
+    if (playerFromDb) {
+      // Восстанавливаем из БД
+      this.socketToTelegram[socketId] = telegramId;
+      this.players[telegramId] = {
+        id: telegramId,
+        socketId,
+        x: playerFromDb.x,
+        y: playerFromDb.y,
+        anim: playerFromDb.anim,
+        inventory: playerFromDb.inventory,
+        chunk: playerFromDb.lastChunk,
+        lastSaveTime: 0,
+      };
+
+      return { x: playerFromDb.x, y: playerFromDb.y };
+    }
+
+
     const chunkX = 0;
     const chunkY = 0;
-    const chunk = this.mapService.getChunk(chunkX, chunkY);
+    const chunk = await this.mapService.getChunk(chunkX, chunkY);
 
     if (!chunk) {
-      this.players[telegramId] = { id: telegramId, x: 100, y: 100, anim: "", inventory: [], socketId, chunk: { chunkX, chunkY } };
+      this.players[telegramId] = {
+        id: telegramId,
+        x: 100,
+        y: 100,
+        anim: "",
+        inventory: [],
+        socketId,
+        chunk: { chunkX, chunkY },
+        lastSaveTime: 0,
+      };
       return { x: 100, y: 100 };
     }
 
@@ -101,15 +241,28 @@ export class GameService {
       anim: "",
       inventory: [],
       chunk: { chunkX, chunkY },
+      lastSaveTime: 0,
     };
+    await this.savePlayer(telegramId);
     return { x: spawnX, y: spawnY };
   }
 
   /**
    * Удаляет игрока.
    */
-  removePlayer(id: string) {
-    delete this.socketToTelegram[id];
+  async removePlayer(socketId: string) {
+    const telegramId = this.socketToTelegram[socketId];
+    if (telegramId) {
+      // Сохраняем перед удалением
+      await this.savePlayer(telegramId);
+      delete this.socketToTelegram[socketId];
+
+      // Не удаляем из players, чтобы сохранить состояние
+      // Просто удаляем socketId
+      if (this.players[telegramId]) {
+        this.players[telegramId].socketId = '';
+      }
+    }
   }
 
   /**
@@ -120,8 +273,9 @@ export class GameService {
     return this.players[this.socketToTelegram[id]] || null;
   }
 
-  updatePosition(id: string, x: number, y: number, anim: string) {
-    const player = this.players[this.socketToTelegram[id]];
+  async updatePosition(id: string, x: number, y: number, anim: string) {
+    const telegramId = this.socketToTelegram[id];
+    const player = this.players[telegramId];
     if (!player) return;
 
     const dt = this.TICK_INTERVAL / 100;
@@ -148,7 +302,7 @@ export class GameService {
     const tileY = Math.floor(newY / 32);
     const chunkX = Math.floor(tileX / 20);
     const chunkY = Math.floor(tileY / 20);
-    const chunk = this.mapService.getChunk(chunkX, chunkY);
+    const chunk = await this.mapService.getChunk(chunkX, chunkY);
 
     if (chunk) {
       const tileInChunkX = tileX % 20;
@@ -167,6 +321,13 @@ export class GameService {
     player.anim = anim;
 
     player.chunk = { chunkX, chunkY, tileX, tileY };
+
+    // Периодическое сохранение при движении (раз в 10 секунд)
+    const now = Date.now();
+    if (!player.lastSaveTime || now - player.lastSaveTime > 10000) {
+      player.lastSaveTime = now;
+      this.savePlayer(telegramId);
+    }
     this.checkItemPickup(player);
   }
 
@@ -181,7 +342,7 @@ export class GameService {
   /**
    * Загружает чанки вокруг игрока.
    */
-  getChunks(cx: number, cy: number): Record<string, ChunkData> {
+  async getChunks(cx: number, cy: number): Promise<Record<string, ChunkData>> {
     return this.mapService.getChunksAround(cx, cy);
   }
 
@@ -189,8 +350,9 @@ export class GameService {
    * Новый метод для выбрасывания предметов из инвентаря на карту.
    * Возвращает данные о выброшенном предмете или null.
    */
-  dropItem(id: string, itemType: string) {
-    const player = this.players[this.socketToTelegram[id]];
+  async dropItem(id: string, itemType: string) {
+    const telegramId = this.socketToTelegram[id];
+    const player = this.players[telegramId];
     if (!player) return null;
 
     const itemIndex = player.inventory.indexOf(itemType);
@@ -201,6 +363,8 @@ export class GameService {
 
     player.inventory.splice(itemIndex, 1);
 
+    await this.savePlayer(telegramId);
+
     let tileX = Math.floor((player.x) / 32);
     let tileY = Math.floor(player.y / 32);
 
@@ -210,7 +374,7 @@ export class GameService {
     const chunkY = Math.floor(tileY / 20);
     const chunkKey = `${chunkX}_${chunkY}`;
 
-    const addedItem = this.mapService.addItemToMap(chunkX, chunkY, tileX, tileY, itemType);
+    const addedItem = await this.mapService.addItemToMap(chunkX, chunkY, tileX, tileY, itemType);
 
     if (addedItem) {
       console.log(`Игрок ${player.id}  ${player.x} ${player.y} выбросил ${itemType} в чанке ${chunkKey} на координатах ${addedItem.x}, ${addedItem.y} addedItem.chunk ${addedItem.chunk}`);
@@ -225,14 +389,14 @@ export class GameService {
     return null;
   }
 
-  private checkItemPickup(player: Player) {
+  private async checkItemPickup(player: Player) {
     const tileX = Math.floor(player.x / 32);
     const tileY = Math.floor(player.y / 32);
     const chunkX = Math.floor(tileX / 20);
     const chunkY = Math.floor(tileY / 20);
     const chunkKey = `${chunkX}_${chunkY}`;
 
-    const chunk = this.mapService.getChunk(chunkX, chunkY);
+    const chunk = await this.mapService.getChunk(chunkX, chunkY);
     if (!chunk) return;
 
     const pickupRadius = 20; // пиксели
@@ -272,6 +436,8 @@ export class GameService {
         x: item.x,
         y: item.y,
       });
+
+      this.savePlayer(player.id);
     }
   }
 
@@ -300,7 +466,7 @@ export class GameService {
     console.log(`Добавлено ${count} предметов на карту`);
   }
 
-  addItemToInventory(socketId: string, itemType: string, count: number) {
+  async addItemToInventory(socketId: string, itemType: string, count: number) {
     const telegramId = this.socketToTelegram[socketId];
     if (!telegramId) return;
 
@@ -310,6 +476,8 @@ export class GameService {
     for (let i = 0; i < count; i++) {
       player.inventory.push(itemType);
     }
+
+    await this.savePlayer(telegramId);
 
     // Можно сразу уведомить игрока
     this.server.to(socketId).emit('inventoryUpdated', {

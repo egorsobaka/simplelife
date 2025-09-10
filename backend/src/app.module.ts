@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GameGateway } from './game/game.gateway';
 import { GameService } from './game/game.service';
 import { TelegramService } from './game/telegram.service';
@@ -11,14 +11,40 @@ import { CraftingService } from './game/crafting.service';
 import { CraftingController } from './game/crafting.controller';
 import { CraftingGateway } from './game/crafting.gateway';
 import { TelegramAuthService } from './game/telegram-auth.service';
+import { MongooseModule } from '@nestjs/mongoose';
+import { PlayerSchema } from './game/player.schema';
+import { ChunkSchema } from './game/chunk.schema';
 
 @Module({
   controllers: [CraftingController],
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // делает конфиг доступным во всем приложении
+      isGlobal: true,
     }),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGODB_URI'),
+      }),
+      inject: [ConfigService],
+    }),
+    MongooseModule.forFeature([
+      { name: 'Player', schema: PlayerSchema },
+      { name: 'Chunk', schema: ChunkSchema }
+    ]),
   ],
-  providers: [TelegramAuthService, CraftingGateway, GameGateway, GameService, TelegramService, MapGateway, MapService, AppController, CraftingController, AppService, CraftingService],
+  providers: [
+    TelegramAuthService,
+    CraftingGateway,
+    GameGateway,
+    GameService,
+    TelegramService,
+    MapGateway,
+    MapService,
+    AppController,
+    CraftingController,
+    AppService,
+    CraftingService
+  ],
 })
 export class AppModule { }
