@@ -126,7 +126,7 @@ export class GameService {
     }
   }
 
-  private async savePlayer(telegramId: string) {
+  private async _savePlayer(telegramId: string) {
     try {
       const player = this.players[telegramId];
       if (!player) return;
@@ -605,5 +605,43 @@ export class GameService {
       }
     }
     console.log("Деревья проверены на рост");
+  }
+
+  // В класс GameService добавьте следующие методы:
+
+  /**
+   * Получить всех игроков
+   */
+  getAllPlayers(): Record<string, Player> {
+    return this.players;
+  }
+
+  /**
+   * Получить игрока по telegramId
+   */
+  getPlayerByTelegramId(telegramId: string): Player | null {
+    return this.players[telegramId] || null;
+  }
+
+  /**
+   * Получить инвентарь игрока по telegramId
+   */
+  getPlayerInventoryByTelegramId(telegramId: string): Record<string, number> {
+    const player = this.players[telegramId];
+    if (!player) return {};
+
+    const inv: Record<string, number> = {};
+    player.inventory.forEach(item => {
+      if (!inv[item]) inv[item] = 0;
+      inv[item]++;
+    });
+    return inv;
+  }
+
+  /**
+   * Сохранить игрока по telegramId
+   */
+  async savePlayer(telegramId: string): Promise<void> {
+    await this._savePlayer(telegramId); // используем существующий метод
   }
 }

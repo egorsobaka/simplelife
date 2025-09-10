@@ -15,9 +15,10 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { PlayerSchema } from './game/player.schema';
 import { ChunkSchema } from './game/chunk.schema';
 import { ChunkController } from './game/chunk.controller';
+import { PlayerController } from './game/player.controller';
 
 @Module({
-  controllers: [CraftingController, ChunkController],
+  controllers: [CraftingController, ChunkController, PlayerController],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
@@ -47,6 +48,7 @@ import { ChunkController } from './game/chunk.controller';
     AppService,
     CraftingService,
     ChunkController,
+    PlayerController,
   ],
 })
 export class AppModule { }

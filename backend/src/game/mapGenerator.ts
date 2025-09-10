@@ -12,9 +12,29 @@ export interface Item {
   type: string;
 }
 
-// глобальные данные для генерации рек и гор по чанкам
-const chunkRivers: Record<string, { positions: number[]; borders: { x: number; y: number }[] }> = {};
+// Глобальное хранилище речной системы
+let riverSystem: {
+  sourceChunk: { x: number; y: number };
+  direction: 'horizontal' | 'vertical';
+  path: Set<string>;
+} | null = null;
+
+// Глобальные данные для рек и гор по чанкам
+const chunkRivers: Record<string, RiverData> = {};
 const chunkMountains: Record<string, { ranges: { x: number; y: number }[]; borders: { x: number; y: number }[] }> = {};
+
+// Интерфейсы для рек
+interface RiverData {
+  positions: number[];
+  entryDirection: RiverDirection;
+  exitDirection: RiverDirection;
+  entryX: number;
+  entryY: number;
+  exitX: number;
+  exitY: number;
+}
+
+type RiverDirection = 'left' | 'right' | 'top' | 'bottom';
 
 // безопасно установить тайл
 function safeSetTile(mapArr: MapTile[][], x: number, y: number, type: string) {
@@ -33,56 +53,155 @@ function generateRiver(mapArr: MapTile[][], chunkX: number, chunkY: number): num
   const topKey = `${chunkX}_${chunkY - 1}`;
   const bottomKey = `${chunkX}_${chunkY + 1}`;
 
-  // Проверяем, нужно ли генерировать реку в этом чанке
-  const shouldGenerateRiver = chunkRivers[leftKey] || chunkRivers[rightKey] || chunkRivers[topKey] || chunkRivers[bottomKey] || (chunkY % 3 === 0);
-  
-  if (!shouldGenerateRiver) {
+  // Проверяем, есть ли река в соседних чанках
+  const hasRiverFromLeft = chunkRivers[leftKey];
+  const hasRiverFromRight = chunkRivers[rightKey];
+  const hasRiverFromTop = chunkRivers[topKey];
+  const hasRiverFromBottom = chunkRivers[bottomKey];
+
+  const neighboringRivers = [
+    hasRiverFromLeft ? 'left' : null,
+    hasRiverFromRight ? 'right' : null,
+    hasRiverFromTop ? 'top' : null,
+    hasRiverFromBottom ? 'bottom' : null
+  ].filter(Boolean) as RiverDirection[];
+
+  // Если нет рек в соседях и мы не создаем новую речную систему
+  if (neighboringRivers.length === 0) {
+    // С небольшой вероятностью создаем начало новой реки
+    if (!riverSystem && Math.random() < 0.1) {
+      riverSystem = {
+        sourceChunk: { x: chunkX, y: chunkY },
+        direction: Math.random() < 0.5 ? 'horizontal' : 'vertical',
+        path: new Set([`${chunkX}_${chunkY}`])
+      };
+    } else if (!riverSystem || !riverSystem.path.has(`${chunkX}_${chunkY}`)) {
+      return undefined;
+    }
+  }
+
+  // Определяем направление входа реки
+  let entryDirection: RiverDirection | null = null;
+  let exitDirection: RiverDirection | null = null;
+
+  if (neighboringRivers.length > 0) {
+    // Если есть реки в соседях, продолжаем существующую
+    entryDirection = neighboringRivers[0];
+    
+    // Определяем противоположное направление для выхода
+    const oppositeDirections: Record<RiverDirection, RiverDirection> = {
+      'left': 'right',
+      'right': 'left',
+      'top': 'bottom',
+      'bottom': 'top'
+    };
+    
+    // Ищем направление, которое не занято входом
+    const possibleExits: RiverDirection[] = ['left', 'right', 'top', 'bottom'].filter(
+      dir => dir !== entryDirection && dir !== oppositeDirections[entryDirection!]
+    ) as RiverDirection[];
+    
+    exitDirection = possibleExits[Math.floor(Math.random() * possibleExits.length)];
+  } else if (riverSystem) {
+    // Создаем новую реку в системе
+    if (riverSystem.direction === 'horizontal') {
+      entryDirection = 'left';
+      exitDirection = 'right';
+    } else {
+      entryDirection = 'top';
+      exitDirection = 'bottom';
+    }
+  }
+
+  if (!entryDirection || !exitDirection) {
     return undefined;
   }
 
-  let entryY = Math.floor(MAP_HEIGHT / 2);
+  // Определяем точки входа и выхода
+  let entryX = 0, entryY = 0, exitX = 0, exitY = 0;
 
-  // Определяем точку входа реки из соседних чанков
-  if (chunkRivers[leftKey]) {
-    entryY = chunkRivers[leftKey].positions[MAP_WIDTH - 1];
-  } else if (chunkRivers[rightKey]) {
-    entryY = chunkRivers[rightKey].positions[0];
-  } else if (chunkRivers[topKey]) {
-    entryY = chunkRivers[topKey].positions[MAP_HEIGHT - 1];
-  } else if (chunkRivers[bottomKey]) {
-    entryY = chunkRivers[bottomKey].positions[0];
+  // Устанавливаем точки входа
+  if (entryDirection === 'left') {
+    entryX = 0;
+    entryY = hasRiverFromLeft ? chunkRivers[leftKey].exitY : Math.floor(MAP_HEIGHT / 2);
+  } else if (entryDirection === 'right') {
+    entryX = MAP_WIDTH - 1;
+    entryY = hasRiverFromRight ? chunkRivers[rightKey].exitY : Math.floor(MAP_HEIGHT / 2);
+  } else if (entryDirection === 'top') {
+    entryY = 0;
+    entryX = hasRiverFromTop ? chunkRivers[topKey].exitX : Math.floor(MAP_WIDTH / 2);
+  } else {
+    entryY = MAP_HEIGHT - 1;
+    entryX = hasRiverFromBottom ? chunkRivers[bottomKey].exitX : Math.floor(MAP_WIDTH / 2);
   }
 
+  // Устанавливаем точки выхода
+  if (exitDirection === 'left') {
+    exitX = 0;
+    exitY = Math.floor(MAP_HEIGHT / 2);
+  } else if (exitDirection === 'right') {
+    exitX = MAP_WIDTH - 1;
+    exitY = Math.floor(MAP_HEIGHT / 2);
+  } else if (exitDirection === 'top') {
+    exitY = 0;
+    exitX = Math.floor(MAP_WIDTH / 2);
+  } else {
+    exitY = MAP_HEIGHT - 1;
+    exitX = Math.floor(MAP_WIDTH / 2);
+  }
+
+  // Создаем прямую реку между точками
   const riverPositions: number[] = [];
-  let ry = entryY;
+  let currentX = entryX;
+  let currentY = entryY;
 
-  // Генерируем путь реки
-  for (let x = 0; x < MAP_WIDTH; x++) {
-    // Создаем реку шириной в 3 тайла
-    safeSetTile(mapArr, x, ry - 1, "water");
-    safeSetTile(mapArr, x, ry, "water");
-    safeSetTile(mapArr, x, ry + 1, "water");
+  // Простой алгоритм Брезенхема для прямой линии
+  const dx = Math.abs(exitX - entryX);
+  const dy = Math.abs(exitY - entryY);
+  const sx = entryX < exitX ? 1 : -1;
+  const sy = entryY < exitY ? 1 : -1;
+  let err = dx - dy;
 
-    riverPositions.push(ry);
-    
-    // Добавляем случайное отклонение для естественного вида
-    if (Math.random() < 0.7) {
-      ry += Math.floor(Math.random() * 3) - 1;
+  while (true) {
+    // Рисуем реку шириной 3 тайла
+    for (let dyOffset = -1; dyOffset <= 1; dyOffset++) {
+      for (let dxOffset = -1; dxOffset <= 1; dxOffset++) {
+        if (Math.abs(dxOffset) + Math.abs(dyOffset) <= 1) {
+          safeSetTile(mapArr, currentX + dxOffset, currentY + dyOffset, "water");
+        }
+      }
     }
-    
-    // Ограничиваем позицию реки в пределах карты
-    ry = Math.max(1, Math.min(MAP_HEIGHT - 2, ry));
+
+    riverPositions.push(entryDirection === 'left' || entryDirection === 'right' ? currentY : currentX);
+
+    if (currentX === exitX && currentY === exitY) break;
+
+    const e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      currentX += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      currentY += sy;
+    }
   }
 
-  // Расширяем реку на границах для плавного перехода
-  safeSetTile(mapArr, MAP_WIDTH - 1, ry - 2, "water");
-  safeSetTile(mapArr, MAP_WIDTH - 1, ry + 2, "water");
-
-  // Сохраняем данные реки для соседних чанков
-  chunkRivers[`${chunkX}_${chunkY}`] = { 
-    positions: riverPositions, 
-    borders: [{ x: MAP_WIDTH - 1, y: ry }] 
+  // Сохраняем данные реки
+  chunkRivers[`${chunkX}_${chunkY}`] = {
+    positions: riverPositions,
+    entryDirection,
+    exitDirection,
+    entryX,
+    entryY,
+    exitX,
+    exitY
   };
+
+  // Добавляем в речную систему
+  if (riverSystem) {
+    riverSystem.path.add(`${chunkX}_${chunkY}`);
+  }
 
   return riverPositions;
 }
@@ -91,7 +210,7 @@ function generateRiver(mapArr: MapTile[][], chunkX: number, chunkY: number): num
 function generateTrees(mapArr: MapTile[][], itemsArr: Item[]) {
   for (let y = 0; y < MAP_HEIGHT; y++) {
     for (let x = 0; x < MAP_WIDTH; x++) {
-      const item = itemsArr.find((item: any) => item.x === x && item.y === y)
+      const item = itemsArr.find((item: any) => item.x === x && item.y === y);
       if (item) {
         continue;
       }
@@ -124,7 +243,7 @@ function generateItems(mapArr: MapTile[][], itemsArr: Item[]) {
         if (!possibleItems || possibleItems.length === 0) continue;
         if (Math.random() < 0.2) {
           const type = possibleItems[Math.floor(Math.random() * possibleItems.length)];
-          const item = itemsArr.find((item: any) => item.x === x && item.y === y)
+          const item = itemsArr.find((item: any) => item.x === x && item.y === y);
           if (!item) {
             itemsArr.push({ x, y, type });
           }
@@ -136,7 +255,7 @@ function generateItems(mapArr: MapTile[][], itemsArr: Item[]) {
 
 // === расширенная генерация леса ===
 function generateForests(mapArr: MapTile[][]) {
-  for (let i = 0; i < 5; i++) { // несколько "очагов леса"
+  for (let i = 0; i < 5; i++) {
     let gx = Math.floor(Math.random() * MAP_WIDTH);
     let gy = Math.floor(Math.random() * MAP_HEIGHT);
 
@@ -172,7 +291,7 @@ function generateItemsOnMapBySurface(mapArr: MapTile[][], numItems: number = 15)
     const y = Math.floor(Math.random() * MAP_HEIGHT);
     const tile = mapArr[y][x];
 
-    const item = itemsArr.find((item: any) => item.x === x && item.y === y)
+    const item = itemsArr.find((item: any) => item.x === x && item.y === y);
     if (item) {
       continue;
     }
@@ -184,7 +303,7 @@ function generateItemsOnMapBySurface(mapArr: MapTile[][], numItems: number = 15)
     const m = {
       "stone": 0.5,
       "tree": 0.9,
-    }
+    };
 
     if (Math.random() < (m[tile.type] || 0.2)) {
       const type = possibleItems[Math.floor(Math.random() * possibleItems.length)];
@@ -276,6 +395,46 @@ function generateMountains(
   chunkMountains[key] = { ranges, borders };
 }
 
+// Новая функция генерации леса, избегающая воду
+function generateForestsAvoidingWater(mapArr: MapTile[][]) {
+  for (let i = 0; i < 3; i++) {
+    let gx = Math.floor(Math.random() * MAP_WIDTH);
+    let gy = Math.floor(Math.random() * MAP_HEIGHT);
+
+    // Ищем стартовую позицию не в воде
+    while (mapArr[gy]?.[gx]?.type === "water") {
+      gx = Math.floor(Math.random() * MAP_WIDTH);
+      gy = Math.floor(Math.random() * MAP_HEIGHT);
+    }
+
+    for (let len = 0; len < 15; len++) {
+      if (gx >= 0 && gy >= 0 && gx < MAP_WIDTH && gy < MAP_HEIGHT) {
+        if (mapArr[gy][gx].type !== "water" && mapArr[gy][gx].type !== "sand") {
+          mapArr[gy][gx].type = "forest";
+        }
+      }
+      
+      // Двигаемся, избегая воду
+      let attempts = 0;
+      let newGx = gx + Math.floor(Math.random() * 3) - 1;
+      let newGy = gy + Math.floor(Math.random() * 3) - 1;
+      
+      while (attempts < 10 && (
+        newGx < 0 || newGx >= MAP_WIDTH || 
+        newGy < 0 || newGy >= MAP_HEIGHT ||
+        mapArr[newGy]?.[newGx]?.type === "water"
+      )) {
+        newGx = gx + Math.floor(Math.random() * 3) - 1;
+        newGy = gy + Math.floor(Math.random() * 3) - 1;
+        attempts++;
+      }
+      
+      gx = newGx;
+      gy = newGy;
+    }
+  }
+}
+
 export function generateMap(chunkX: number, chunkY: number): { map: MapTile[][]; items: Item[] } {
   const mapArr: MapTile[][] = [];
   const itemsArr: Item[] = [];
@@ -288,16 +447,29 @@ export function generateMap(chunkX: number, chunkY: number): { map: MapTile[][];
     }
   }
 
-  // Генерируем реку
+  // Генерируем реку (только если она должна быть в этом чанке)
   const riverPositions = generateRiver(mapArr, chunkX, chunkY);
 
-  // Генерируем остальные элементы
+  // Остальная генерация карты
   generateMountains(mapArr, chunkX, chunkY, riverPositions, itemsArr);
-  generateForests(mapArr);
+  generateForestsAvoidingWater(mapArr);
   generateTrees(mapArr, itemsArr);
   generateItems(mapArr, itemsArr);
-  const surfaceItems = generateItemsOnMapBySurface(mapArr, 20);
+  
+  const surfaceItems = generateItemsOnMapBySurface(mapArr, 20).filter(item => {
+    const tile = mapArr[item.y]?.[item.x];
+    return tile && tile.type !== "water";
+  });
+  
   itemsArr.push(...surfaceItems);
 
   return { map: mapArr, items: itemsArr };
+}
+
+// Функция для сброса речной системы
+export function resetRiverSystem(): void {
+  riverSystem = null;
+  for (const key in chunkRivers) {
+    delete chunkRivers[key];
+  }
 }
