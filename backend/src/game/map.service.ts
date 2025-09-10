@@ -19,11 +19,11 @@ export class MapService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @InjectModel('Chunk') private readonly chunkModel: Model<ChunkDocument>
-  ) {}
+  ) { }
 
   async onModuleInit() {
     await this.loadInitialChunks();
-    
+
     this.saveInterval = setInterval(() => {
       this.saveAllChunks();
     }, this.SAVE_INTERVAL);
@@ -60,7 +60,7 @@ export class MapService implements OnModuleInit, OnModuleDestroy {
     try {
       const savePromises = Object.entries(this.loadedChunks).map(async ([key, chunkData]) => {
         const [chunkX, chunkY] = key.split('_').map(Number);
-        
+
         const chunkDoc = {
           chunkX,
           chunkY,
@@ -146,14 +146,14 @@ export class MapService implements OnModuleInit, OnModuleDestroy {
 
   async getChunksAround(cx: number, cy: number): Promise<Record<string, ChunkData>> {
     const chunks: Record<string, ChunkData> = {};
-    
+
     const loadPromises = [];
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         const chunkX = cx + dx;
         const chunkY = cy + dy;
         const key = `${chunkX}_${chunkY}`;
-        
+
         loadPromises.push(
           this.getChunk(chunkX, chunkY).then(chunk => {
             if (chunk) {
@@ -215,4 +215,123 @@ export class MapService implements OnModuleInit, OnModuleDestroy {
     }
     return null;
   }
+
+  /**
+  * Удалить чанк из базы данных
+  */
+  async deleteChunkFromDb(chunkX: number, chunkY: number): Promise<{ deletedCount: number }> {
+    try {
+      const result = await this.chunkModel.deleteOne({ chunkX, chunkY }).exec();
+      return { deletedCount: result.deletedCount };
+    } catch (error) {
+      console.error(`Ошибка удаления чанка ${chunkX}_${chunkY}:`, error);
+      return { deletedCount: 0 };
+    }
+  }
+
+  /**
+  * Получить чанк напрямую из базы данных
+  */
+  async getChunkFromDb(chunkX: number, chunkY: number): Promise<ChunkData | null> {
+    try {
+      const chunk = await this.chunkModel.findOne({ chunkX, chunkY }).exec();
+      return chunk ? { tiles: chunk.tiles, items: chunk.items } : null;
+    } catch (error) {
+      console.error(`Ошибка получения чанка ${chunkX}_${chunkY} из БД:`, error);
+      return null;
+    }
+  }
+
+
+  /**
+   * Удалить чанк из кэша
+   */
+  removeFromCache(chunkX: number, chunkY: number): void {
+    const key = `${chunkX}_${chunkY}`;
+    delete this.loadedChunks[key];
+  }
+
+  /**
+   * Получить статистику по чанкам в БД
+   */
+  async getChunkStats(): Promise<{ totalChunks: number; chunkDistribution: any }> {
+    try {
+      const totalChunks = await this.chunkModel.countDocuments().exec();
+
+      // Группировка по координатам для анализа распределения
+      const distribution = await this.chunkModel.aggregate([
+        {
+          $group: {
+            _id: null,
+            minX: { $min: '$chunkX' },
+            maxX: { $max: '$chunkX' },
+            minY: { $min: '$chunkY' },
+            maxY: { $max: '$chunkY' },
+            uniqueChunks: { $addToSet: { x: '$chunkX', y: '$chunkY' } }
+          }
+        }
+      ]).exec();
+
+      return {
+        totalChunks,
+        chunkDistribution: distribution[0] || {}
+      };
+    } catch (error) {
+      console.error('Ошибка получения статистики чанков:', error);
+      return { totalChunks: 0, chunkDistribution: {} };
+    }
+  }
+
+  /**
+   * Поиск чанков по критериям
+   */
+  async searchChunks(tileType?: string, itemType?: string, limit = 10): Promise<any[]> {
+    try {
+      const query: any = {};
+
+      if (tileType) {
+        query['tiles'] = { $elemMatch: { $elemMatch: { type: tileType } } };
+      }
+
+      if (itemType) {
+        query['items.type'] = itemType;
+      }
+
+      const chunks = await this.chunkModel
+        .find(query)
+        .select('chunkX chunkY tiles items')
+        .limit(limit)
+        .exec();
+
+      return chunks.map(chunk => ({
+        chunkX: chunk.chunkX,
+        chunkY: chunk.chunkY,
+        tilesCount: chunk.tiles.length,
+        itemsCount: chunk.items.length,
+        hasTileType: tileType ? true : undefined,
+        hasItemType: itemType ? true : undefined
+      }));
+    } catch (error) {
+      console.error('Ошибка поиска чанков:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Получить статистику кэша
+   */
+  getCacheStats() {
+    return {
+      loadedChunksCount: Object.keys(this.loadedChunks).length,
+      chunkKeys: Object.keys(this.loadedChunks)
+    };
+  }
+
+  /**
+   * Очистить кэш чанков
+   */
+  clearCache(): void {
+    this.loadedChunks = {};
+  }
+
 }

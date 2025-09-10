@@ -14,9 +14,10 @@ import { TelegramAuthService } from './game/telegram-auth.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PlayerSchema } from './game/player.schema';
 import { ChunkSchema } from './game/chunk.schema';
+import { ChunkController } from './game/chunk.controller';
 
 @Module({
-  controllers: [CraftingController],
+  controllers: [CraftingController, ChunkController],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
@@ -44,7 +45,8 @@ import { ChunkSchema } from './game/chunk.schema';
     AppController,
     CraftingController,
     AppService,
-    CraftingService
+    CraftingService,
+    ChunkController,
   ],
 })
 export class AppModule { }

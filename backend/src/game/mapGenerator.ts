@@ -26,6 +26,67 @@ function safeSetTile(mapArr: MapTile[][], x: number, y: number, type: string) {
   }
 }
 
+// === генерация реки ===
+function generateRiver(mapArr: MapTile[][], chunkX: number, chunkY: number): number[] | undefined {
+  const leftKey = `${chunkX - 1}_${chunkY}`;
+  const rightKey = `${chunkX + 1}_${chunkY}`;
+  const topKey = `${chunkX}_${chunkY - 1}`;
+  const bottomKey = `${chunkX}_${chunkY + 1}`;
+
+  // Проверяем, нужно ли генерировать реку в этом чанке
+  const shouldGenerateRiver = chunkRivers[leftKey] || chunkRivers[rightKey] || chunkRivers[topKey] || chunkRivers[bottomKey] || (chunkY % 3 === 0);
+  
+  if (!shouldGenerateRiver) {
+    return undefined;
+  }
+
+  let entryY = Math.floor(MAP_HEIGHT / 2);
+
+  // Определяем точку входа реки из соседних чанков
+  if (chunkRivers[leftKey]) {
+    entryY = chunkRivers[leftKey].positions[MAP_WIDTH - 1];
+  } else if (chunkRivers[rightKey]) {
+    entryY = chunkRivers[rightKey].positions[0];
+  } else if (chunkRivers[topKey]) {
+    entryY = chunkRivers[topKey].positions[MAP_HEIGHT - 1];
+  } else if (chunkRivers[bottomKey]) {
+    entryY = chunkRivers[bottomKey].positions[0];
+  }
+
+  const riverPositions: number[] = [];
+  let ry = entryY;
+
+  // Генерируем путь реки
+  for (let x = 0; x < MAP_WIDTH; x++) {
+    // Создаем реку шириной в 3 тайла
+    safeSetTile(mapArr, x, ry - 1, "water");
+    safeSetTile(mapArr, x, ry, "water");
+    safeSetTile(mapArr, x, ry + 1, "water");
+
+    riverPositions.push(ry);
+    
+    // Добавляем случайное отклонение для естественного вида
+    if (Math.random() < 0.7) {
+      ry += Math.floor(Math.random() * 3) - 1;
+    }
+    
+    // Ограничиваем позицию реки в пределах карты
+    ry = Math.max(1, Math.min(MAP_HEIGHT - 2, ry));
+  }
+
+  // Расширяем реку на границах для плавного перехода
+  safeSetTile(mapArr, MAP_WIDTH - 1, ry - 2, "water");
+  safeSetTile(mapArr, MAP_WIDTH - 1, ry + 2, "water");
+
+  // Сохраняем данные реки для соседних чанков
+  chunkRivers[`${chunkX}_${chunkY}`] = { 
+    positions: riverPositions, 
+    borders: [{ x: MAP_WIDTH - 1, y: ry }] 
+  };
+
+  return riverPositions;
+}
+
 // === генерация деревьев ===
 function generateTrees(mapArr: MapTile[][], itemsArr: Item[]) {
   for (let y = 0; y < MAP_HEIGHT; y++) {
@@ -106,7 +167,6 @@ function generateItemsOnMapBySurface(mapArr: MapTile[][], numItems: number = 15)
   let attempts = 0;
 
   while (itemsArr.length < numItems && attempts < 1000) {
-
     attempts++;
     const x = Math.floor(Math.random() * MAP_WIDTH);
     const y = Math.floor(Math.random() * MAP_HEIGHT);
@@ -216,11 +276,11 @@ function generateMountains(
   chunkMountains[key] = { ranges, borders };
 }
 
-
 export function generateMap(chunkX: number, chunkY: number): { map: MapTile[][]; items: Item[] } {
   const mapArr: MapTile[][] = [];
   const itemsArr: Item[] = [];
 
+  // Инициализируем карту травой
   for (let y = 0; y < MAP_HEIGHT; y++) {
     mapArr[y] = [];
     for (let x = 0; x < MAP_WIDTH; x++) {
@@ -228,43 +288,10 @@ export function generateMap(chunkX: number, chunkY: number): { map: MapTile[][];
     }
   }
 
-  const leftKey = `${chunkX - 1}_${chunkY}`;
-  const rightKey = `${chunkX + 1}_${chunkY}`;
-  const topKey = `${chunkX}_${chunkY - 1}`;
-  const bottomKey = `${chunkX}_${chunkY + 1}`;
+  // Генерируем реку
+  const riverPositions = generateRiver(mapArr, chunkX, chunkY);
 
-  let riverPositions: number[] | undefined;
-
-  if (chunkRivers[leftKey] || chunkRivers[rightKey] || (chunkY % 3 === 0)) {
-    let entryY = Math.floor(MAP_HEIGHT / 2);
-
-    if (chunkRivers[leftKey]) {
-      entryY = chunkRivers[leftKey].positions[MAP_WIDTH - 1];
-    } else if (chunkRivers[rightKey]) {
-      entryY = chunkRivers[rightKey].positions[0];
-    } else if (chunkRivers[topKey]) {
-      entryY = chunkRivers[topKey].positions[MAP_HEIGHT - 1];
-    }
-
-    riverPositions = [];
-    let ry = entryY;
-
-    for (let x = 0; x < MAP_WIDTH; x++) {
-      safeSetTile(mapArr, x, ry - 1, "water");
-      safeSetTile(mapArr, x, ry, "water");
-      safeSetTile(mapArr, x, ry + 1, "water");
-
-      riverPositions.push(ry);
-      if (Math.random() < 0.7) ry += Math.floor(Math.random() * 3) - 1;
-      ry = Math.max(1, Math.min(MAP_HEIGHT - 2, ry));
-    }
-
-    safeSetTile(mapArr, MAP_WIDTH - 1, ry - 2, "water");
-    safeSetTile(mapArr, MAP_WIDTH - 1, ry + 2, "water");
-
-    chunkRivers[`${chunkX}_${chunkY}`] = { positions: riverPositions, borders: [{ x: MAP_WIDTH - 1, y: ry }] };
-  }
-
+  // Генерируем остальные элементы
   generateMountains(mapArr, chunkX, chunkY, riverPositions, itemsArr);
   generateForests(mapArr);
   generateTrees(mapArr, itemsArr);
