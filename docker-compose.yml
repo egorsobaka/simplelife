@@ -39,6 +39,21 @@ services:
       - mongodb_data:/data/db
       - mongodb_config:/data/configdb
 
+  mongo-express:
+    container_name: mongo-express-admin
+    image: mongo-express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: mongo_user
+      ME_CONFIG_MONGODB_ADMINPASSWORD: mongo_pass
+      ME_CONFIG_MONGODB_URL: mongodb://mongo_user:mongo_pass@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    depends_on:
+      - mongodb
+
 volumes:
   mongodb_data:
   mongodb_config:

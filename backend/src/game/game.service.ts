@@ -3,6 +3,7 @@ import { MapService, ChunkData } from './map.service';
 import { Server } from 'socket.io';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { InventoryItem } from './player.schema';
 
 interface Player {
   lastSaveTime: number;
@@ -11,7 +12,7 @@ interface Player {
   y: number;
   anim: string;
   socketId: string;
-  inventory: string[];
+  inventory: Record<string, InventoryItem>;
   chunk?: any;
 }
 
@@ -21,7 +22,7 @@ interface PlayerDocument {
   x: number;
   y: number;
   anim: string;
-  inventory: string[];
+  inventory: Record<string, InventoryItem>;
   lastChunk: {
     chunkX: number;
     chunkY: number;
@@ -202,7 +203,7 @@ export class GameService {
         x: 100,
         y: 100,
         anim: "",
-        inventory: [],
+        inventory: {},
         socketId,
         chunk: { chunkX, chunkY },
         lastSaveTime: 0,
@@ -239,7 +240,7 @@ export class GameService {
       x: spawnX,
       y: spawnY,
       anim: "",
-      inventory: [],
+      inventory: {},
       chunk: { chunkX, chunkY },
       lastSaveTime: 0,
     };
@@ -355,13 +356,13 @@ export class GameService {
     const player = this.players[telegramId];
     if (!player) return null;
 
-    const itemIndex = player.inventory.indexOf(itemType);
-    if (itemIndex === -1) {
+    const inventory = player.inventory[itemType];
+    if (inventory) {
       console.log(`Игрок ${player.id} не может выбросить ${itemType}, его нет в инвентаре ${player.x} ${player.y}`);
       return null;
     }
 
-    player.inventory.splice(itemIndex, 1);
+    player.inventory[itemType].quantity--;
 
     await this.savePlayer(telegramId);
 
@@ -415,7 +416,13 @@ export class GameService {
         return;
       }
 
-      player.inventory.push(item.type);
+      if (!player.inventory[item.type]) {
+        player.inventory[item.type] = {
+          quantity: 0,
+        }
+      }
+
+      player.inventory[item.type].quantity++;
 
       chunk.items.splice(foundIndex, 1);
 
@@ -474,7 +481,12 @@ export class GameService {
     if (!player) return;
 
     for (let i = 0; i < count; i++) {
-      player.inventory.push(itemType);
+      if (!player.inventory[itemType]) {
+        player.inventory[itemType] = {
+          quantity: 0,
+        }
+      }
+      player.inventory[itemType].quantity += count;
     }
 
     await this.savePlayer(telegramId);
@@ -488,19 +500,14 @@ export class GameService {
   /**
    * Возвращает инвентарь игрока в виде объекта с количеством каждого предмета.
    */
-  getPlayerInventory(socketId: string): Record<string, number> {
+  getPlayerInventory(socketId: string): Record<string, InventoryItem> {
     const telegramId = this.socketToTelegram[socketId];
     if (!telegramId) return {};
 
     const player = this.players[telegramId];
     if (!player) return {};
 
-    const inv: Record<string, number> = {};
-    player.inventory.forEach(item => {
-      if (!inv[item]) inv[item] = 0;
-      inv[item]++;
-    });
-    return inv;
+    return player.inventory;
   }
 
   private growTrees() {
@@ -626,16 +633,10 @@ export class GameService {
   /**
    * Получить инвентарь игрока по telegramId
    */
-  getPlayerInventoryByTelegramId(telegramId: string): Record<string, number> {
+  getPlayerInventoryByTelegramId(telegramId: string): Record<string, InventoryItem> {
     const player = this.players[telegramId];
     if (!player) return {};
-
-    const inv: Record<string, number> = {};
-    player.inventory.forEach(item => {
-      if (!inv[item]) inv[item] = 0;
-      inv[item]++;
-    });
-    return inv;
+    return player.inventory;
   }
 
   /**

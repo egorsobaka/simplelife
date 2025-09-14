@@ -49,13 +49,17 @@ const getUserId = () => {
   };
 }
 
+export interface InventoryItem {
+  quantity: number;
+}
+
 class GameScene extends Phaser.Scene {
   joystickBase!: Phaser.GameObjects.Arc;
   joystickThumb!: Phaser.GameObjects.Arc;
   messagesContainer!: Phaser.GameObjects.Container;
   messages: Phaser.GameObjects.Text[] = [];
   messagesVisible = true;
-  inventory: { [key: string]: number } = {};
+  inventory: { [key: string]: InventoryItem } = {};
   chopZone!: Phaser.GameObjects.Rectangle;
   chopBuffer: { tileX: number; tileY: number; count: number }[] = [];
 
@@ -449,9 +453,8 @@ class GameScene extends Phaser.Scene {
 
   // Метод для добавления ресурса в инвентарь
   addItemToInventory(type: string, count: number) {
-    if (!this.inventory[type]) this.inventory[type] = 0;
-    this.inventory[type] += count;
-
+    if (!this.inventory[type]) this.inventory[type] = { quantity: 0 };
+    this.inventory[type].quantity += count;
     // если сцена инвентаря активна, обновляем её
     // const invScene = this.scene.get("InventoryScene") as any;
     // if (invScene?.isActive()) {
@@ -475,9 +478,9 @@ class GameScene extends Phaser.Scene {
         console.log('itemPicked', data);
         this.addMessage(`Вы подняли ${data.type}`);
         if (this.inventory[data.type]) {
-          this.inventory[data.type]++;
+          this.inventory[data.type].quantity++;
         } else {
-          this.inventory[data.type] = 1;
+          this.inventory[data.type].quantity = 1;
         }
       });
       socket?.on("crafted", (data: { inventory: any }) => {
@@ -608,7 +611,7 @@ class GameScene extends Phaser.Scene {
 
       if (data?.player?.inventory?.length > 0) {
         for (const inventory of data?.player?.inventory) {
-          this.inventory[inventory] = (this.inventory[inventory] ? this.inventory[inventory] : 0) + 1;
+          this.inventory[inventory] = (this.inventory[inventory] ? this.inventory[inventory] : { quantity: 0 });
         }
       }
 

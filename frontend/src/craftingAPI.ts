@@ -1,3 +1,5 @@
+import type { InventoryItem } from "./gameScene";
+
 // craftingAPI.ts
 export interface CraftableItem {
   name: string;
@@ -9,7 +11,7 @@ export interface CraftableItem {
 }
 
 export async function fetchCraftableItems(
-  inventory: Record<string, number>,
+  inventory: Record<string, InventoryItem>,
   ownedItems: string[] = []
 ): Promise<CraftableItem[]> {
   const tg = (window as any).Telegram?.WebApp;

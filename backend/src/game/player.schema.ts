@@ -1,6 +1,10 @@
 import { Schema, SchemaFactory, Prop } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+export interface InventoryItem {
+  quantity: number;
+}
+
 @Schema()
 export class Player extends Document {
   @Prop({ required: true, unique: true })
@@ -15,8 +19,14 @@ export class Player extends Document {
   @Prop({ default: '' })
   anim: string;
 
-  @Prop({ type: [String], default: [] })
-  inventory: string[];
+  @Prop({
+    type: Map,
+    of: {
+      quantity: { type: Number, default: 1 }
+    },
+    default: {}
+  })
+  inventory: Map<string, InventoryItem>;
 
   @Prop({
     type: {
