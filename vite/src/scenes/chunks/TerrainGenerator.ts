@@ -16,6 +16,12 @@ export class TerrainGenerator {
     [this.terrainTypes.GRASS]: 0x44aa44
   };
 
+  private obstacleTypes = {
+    TREE: 'tree',
+    ROCK: 'rock',
+    BUSH: 'bush'
+  };
+
   generateChunkTiles(chunkX: number, chunkY: number, chunkSize: number): number[][] {
     const tiles: number[][] = [];
     
@@ -59,5 +65,27 @@ export class TerrainGenerator {
       default:
         return false;
     }
+  }
+
+  canSpawnObstacle(terrainType: number, obstacleType: string): boolean {
+    switch (obstacleType) {
+      case 'tree':
+        return terrainType === this.terrainTypes.FOREST;
+      case 'rock':
+        return terrainType === this.terrainTypes.MOUNTAIN;
+      case 'bush':
+        return terrainType === this.terrainTypes.FOREST || terrainType === this.terrainTypes.GRASS;
+      default:
+        return false;
+    }
+  }
+
+  getObstacleConfig(obstacleType: string): { sprite: string; isSolid: boolean; canInteract: boolean } {
+    const configs = {
+      tree: { sprite: 'tree', isSolid: true, canInteract: true },
+      rock: { sprite: 'rock', isSolid: true, canInteract: true },
+      bush: { sprite: 'bush', isSolid: false, canInteract: true }
+    };
+    return configs[obstacleType as keyof typeof configs] || { sprite: 'tree', isSolid: true, canInteract: false };
   }
 }

@@ -14,6 +14,7 @@ export class MainScene extends Phaser.Scene {
   private chunkManager!: ChunkManager;
   private playerChunk: { x: number; y: number } = { x: 0, y: 0 };
   private itemsGroup!: Phaser.Physics.Arcade.Group;
+  private obstaclesGroup!: Phaser.Physics.Arcade.StaticGroup;
 
   constructor() {
     super('MainScene');
@@ -29,15 +30,21 @@ export class MainScene extends Phaser.Scene {
       frameWidth: 32,
       frameHeight: 32
     });
+
+    // Загрузка спрайтов препятствий (временные заглушки)
+    this.load.image('tree', 'https://labs.phaser.io/assets/sprites/tree.png');
+    this.load.image('rock', 'https://labs.phaser.io/assets/sprites/rock.png');
+    this.load.image('bush', 'https://labs.phaser.io/assets/sprites/bush.png');
   }
 
   create() {
     this.physics.world.setBounds(-Number.MAX_SAFE_INTEGER / 2, -Number.MAX_SAFE_INTEGER / 2, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
 
-    // Создаем группу для предметов ДО создания chunkManager
+    // Создаем группы для предметов и препятствий
     this.itemsGroup = this.physics.add.group();
+    this.obstaclesGroup = this.physics.add.staticGroup(); // Статическая группа для неподвижных препятствий
 
-    this.chunkManager = new ChunkManager(this, this.itemsGroup, 40, 32);
+    this.chunkManager = new ChunkManager(this, this.itemsGroup, this.obstaclesGroup, 40, 32);
     this.player = new Player(this, 0, 0);
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
@@ -45,9 +52,27 @@ export class MainScene extends Phaser.Scene {
     this.joystick = new Joystick(this, 100, this.cameras.main.height - 150);
 
     this.createUI();
+    this.createPlaceholderSprites(); // Создаем временные спрайты если нужно
     this.generateInitialChunks();
     this.setupEventListeners();
     this.setupCollisions();
+  }
+
+  private createPlaceholderSprites(): void {
+    // Создаем простые графические спрайты для препятствий если они не загрузились
+    const createPlaceholder = (color: number, key: string) => {
+      if (!this.textures.exists(key)) {
+        const graphics = this.add.graphics();
+        graphics.fillStyle(color);
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.generateTexture(key, 64, 64);
+        graphics.destroy();
+      }
+    };
+
+    createPlaceholder(0x228822, 'tree'); // Зеленый для деревьев
+    createPlaceholder(0x888888, 'rock'); // Серый для камней
+    createPlaceholder(0x44aa44, 'bush'); // Светло-зеленый для кустов
   }
 
   private createUI(): void {
@@ -66,7 +91,7 @@ export class MainScene extends Phaser.Scene {
     }).setScrollFactor(0).setDepth(1000);
 
     // Добавляем отладочную информацию
-    const debugText = this.add.text(20, 100, 'Items: 0', {
+    const debugText = this.add.text(20, 100, 'Items: 0, Obstacles: 0', {
       fontSize: '14px',
       color: '#ff9900',
       stroke: '#000',
@@ -75,7 +100,7 @@ export class MainScene extends Phaser.Scene {
 
     this.events.on('update', () => {
       chunkText.setText(`Chunk: [${this.playerChunk.x}, ${this.playerChunk.y}]`);
-      debugText.setText(`Items: ${this.itemsGroup.getLength()}`);
+      debugText.setText(`Items: ${this.itemsGroup.getLength()}, Obstacles: ${this.obstaclesGroup.getLength()}`);
     });
   }
 
@@ -120,14 +145,10 @@ export class MainScene extends Phaser.Scene {
         onComplete: () => messageText.destroy()
       });
     });
-
-    this.events.on('inventoryUpdated', (inventory: Map<string, any>) => {
-      this.eventBus.emit('inventoryUpdated', { inventory });
-    });
   }
 
   private setupCollisions(): void {
-    // Правильно настраиваем overlap между игроком и предметами
+    // Коллизии с предметами
     this.physics.add.overlap(
       this.player.sprite,
       this.itemsGroup,
@@ -135,6 +156,32 @@ export class MainScene extends Phaser.Scene {
       undefined,
       this
     );
+
+    // Коллизии с препятствиями (игрок не может проходить сквозь твердые препятствия)
+    this.physics.add.collider(
+      this.player.sprite,
+      this.obstaclesGroup,
+      this.handleObstacleCollision.bind(this),
+      this.checkIfObstacleIsSolid.bind(this),
+      this
+    );
+  }
+
+  private checkIfObstacleIsSolid(player: any, obstacle: any): boolean {
+    return obstacle.getData('isSolid') === true;
+  }
+
+  private handleObstacleCollision(player: any, obstacle: any): void {
+    // Устанавливаем состояние столкновения для игрока
+    this.player.setColliding(true);
+    
+    // Можно добавить дополнительную логику при столкновении
+    const obstacleType = obstacle.getData('type');
+    if (obstacleType === 'tree') {
+      this.events.emit('showMessage', 'Это дерево! Обойди его.');
+    } else if (obstacleType === 'rock') {
+      this.events.emit('showMessage', 'Камень преткновения!');
+    }
   }
 
   private collectItem(player: any, item: any): void {
@@ -159,7 +206,6 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
-
   private getItemName(itemType: string): string {
     const names: { [key: string]: string } = {
       'star': 'Звезда',
@@ -172,6 +218,9 @@ export class MainScene extends Phaser.Scene {
   update() {
     this.handleMovement();
     this.updateChunks();
+    
+    // Сбрасываем состояние столкновения каждый кадр
+    this.player.setColliding(false);
   }
 
   private handleMovement(): void {
