@@ -9,7 +9,7 @@ const config: Phaser.Types.Core.GameConfig = {
   backgroundColor: "#000000",
   scene: [GameScene],
   scale: {
-    mode: Phaser.Scale.RESIZE, // автоматическое изменение размера при смене ориентации
+    mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
   physics: {
@@ -22,7 +22,6 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config);
 
-// обновление размера при повороте экрана
 window.addEventListener("resize", () => {
   game.scale.resize(window.innerWidth, window.innerHeight);
 });

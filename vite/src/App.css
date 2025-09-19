@@ -1,0 +1,20 @@
+/* src/App.css */
+.app {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Стили для мобильных устройств */
+@media (max-width: 768px) {
+  .app {
+    font-size: 14px;
+  }
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}

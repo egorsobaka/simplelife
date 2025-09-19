@@ -1,0 +1,40 @@
+<!-- public/test-telegram.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Telegram WebApp</title>
+    <script>
+        // Mock Telegram WebApp
+        window.Telegram = {
+            WebApp: {
+                initData: '',
+                initDataUnsafe: {
+                    user: {
+                        id: 123456789,
+                        first_name: 'Test',
+                        last_name: 'User', 
+                        username: 'testuser',
+                        language_code: 'ru'
+                    }
+                },
+                sendData: function(data) {
+                    console.log('Telegram data:', data);
+                },
+                showAlert: function(message) {
+                    alert('Telegram: ' + message);
+                },
+                close: function() {
+                    console.log('App closed');
+                }
+            }
+        };
+    </script>
+</head>
+<body>
+    <h1>Test Telegram WebApp</h1>
+    <p>This is a local test page with mocked Telegram API</p>
+    <button onclick="window.location.href='http://localhost:5173'">
+        Open Game
+    </button>
+</body>
+</html>
