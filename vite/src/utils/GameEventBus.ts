@@ -1,5 +1,5 @@
 // src/utils/GameEventBus.ts
-import { InventoryItem, useGameStore } from '@/store/gameStore';
+import { useGameStore } from '@/store/gameStore';
 
 export class GameEventBus {
   private static instance: GameEventBus;
@@ -34,13 +34,13 @@ export class GameEventBus {
     const { addToInventory, updateScore } = useGameStore.getState();
 
     instance.on('itemCollected', (data: { itemType: string }) => {
-      const items: { [key: string]: Omit<InventoryItem, 'quantity'> } = {
+      const items = {
         star: { id: 'star', name: 'Звезда', icon: '⭐' },
         wood: { id: 'wood', name: 'Дерево', icon: '🪵' },
         stone: { id: 'stone', name: 'Камень', icon: '🪨' }
       };
 
-      const item = items[data.itemType];
+      const item = items[data.itemType as keyof typeof items];
       if (item) {
         addToInventory(item);
         
@@ -48,11 +48,6 @@ export class GameEventBus {
           updateScore(10);
         }
       }
-    });
-
-    instance.on('inventoryUpdated', (data: { inventory: Map<string, InventoryItem> }) => {
-      // Синхронизация с React компонентами
-      useGameStore.setState({ inventory: data.inventory });
     });
   }
 }

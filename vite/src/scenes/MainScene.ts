@@ -157,8 +157,8 @@ export class MainScene extends Phaser.Scene {
         item.destroy();
       }
     });
-
   }
+
 
   private getItemName(itemType: string): string {
     const names: { [key: string]: string } = {

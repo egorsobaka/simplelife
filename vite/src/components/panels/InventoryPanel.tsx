@@ -15,7 +15,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ onClose }) => {
       <div style={{ padding: '10px 0' }}>
         <h4 style={{ margin: '0 0 15px 0', textAlign: 'center' }}>Ваши предметы</h4>
         
-        {Array.from(inventory.entries()).length === 0 ? (
+        {Object.keys(inventory).length === 0 ? (
           <div style={{ textAlign: 'center', opacity: 0.7, padding: '20px' }}>
             Инвентарь пуст
           </div>
@@ -27,7 +27,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ onClose }) => {
             maxHeight: '300px',
             overflowY: 'auto'
           }}>
-            {Array.from(inventory.entries()).map(([id, item]) => (
+            {Object.entries(inventory).map(([id, item]) => (
               <div key={id} style={{
                 background: 'rgba(255,255,255,0.1)',
                 borderRadius: '8px',
