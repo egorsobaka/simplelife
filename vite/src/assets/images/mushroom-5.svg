@@ -1,0 +1,43 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="toadstoolCap" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ef5350"/>
+      <stop offset="100%" stop-color="#d32f2f"/>
+    </linearGradient>
+    
+    <linearGradient id="toadstoolStem" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f5f5f5"/>
+      <stop offset="100%" stop-color="#e0e0e0"/>
+    </linearGradient>
+    
+    <linearGradient id="toadstoolSkirt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffeb3b"/>
+      <stop offset="100%" stop-color="#fbc02d"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ножка -->
+  <path d="M30 50 L30 35 L34 35 L34 50 Z" fill="url(#toadstoolStem)"/>
+  
+  <!-- Юбочка -->
+  <path d="M30 40 L30 38 L34 38 L34 40 Z" fill="url(#toadstoolSkirt)"/>
+  <path d="M30 38 Q32 36 34 38" fill="url(#toadstoolSkirt)"/>
+  
+  <!-- Шляпка -->
+  <path d="M22 35 Q32 25 42 35 Q38 38 26 38 Z" fill="url(#toadstoolCap)"/>
+  
+  <!-- Токсичное свечение -->
+  <circle cx="32" cy="32" r="3" fill="#ffeb3b" opacity="0.3">
+    <animate attributeName="r" values="3;4;3" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.2;0.4;0.2" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Череп (символ ядовитости) -->
+  <g fill="#ffffff" opacity="0.9" stroke="#000000" stroke-width="0.5">
+    <circle cx="32" cy="30" r="2"/>
+    <path d="M30 28 L34 28" stroke="#000000" stroke-width="1"/>
+    <circle cx="30" cy="27" r="0.5" fill="#000000"/>
+    <circle cx="34" cy="27" r="0.5" fill="#000000"/>
+    <path d="M31 32 L33 32" stroke="#000000" stroke-width="1"/>
+  </g>
+</svg>

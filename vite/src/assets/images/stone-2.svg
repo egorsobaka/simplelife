@@ -1,0 +1,39 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="crystalStone" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#78909c"/>
+      <stop offset="50%" stop-color="#546e7a"/>
+      <stop offset="100%" stop-color="#37474f"/>
+    </linearGradient>
+    
+    <linearGradient id="crystalBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#29b6f6"/>
+      <stop offset="100%" stop-color="#0288d1"/>
+    </linearGradient>
+    
+    <linearGradient id="crystalHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e1f5fe"/>
+      <stop offset="100%" stop-color="#b3e5fc"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Основной камень -->
+  <path d="M20 45 Q15 35 25 30 Q30 25 40 30 Q45 35 40 45 Q35 50 25 45 Z" fill="url(#crystalStone)"/>
+  
+  <!-- Кристаллы -->
+  <path d="M30 25 L33 20 L36 25 Z" fill="url(#crystalBlue)"/>
+  <path d="M35 28 L37 23 L39 28 Z" fill="url(#crystalBlue)"/>
+  <path d="M40 30 L42 25 L44 30 Z" fill="url(#crystalBlue)"/>
+  
+  <!-- Блеск кристаллов -->
+  <path d="M31 23 L32 21 L33 23 Z" fill="url(#crystalHighlight)"/>
+  <path d="M36 26 L37 24 L38 26 Z" fill="url(#crystalHighlight)"/>
+  <path d="M41 28 L42 26 L43 28 Z" fill="url(#crystalHighlight)"/>
+
+  <!-- Анимация свечения кристаллов -->
+  <g opacity="0.8">
+    <path d="M30 25 L33 20 L36 25 Z" fill="url(#crystalBlue)">
+      <animate attributeName="opacity" values="0.6;0.9;0.6" dur="1.5s" repeatCount="indefinite"/>
+    </path>
+  </g>
+</svg>

@@ -1,0 +1,23 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="simpleStone" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9e9e9e"/>
+      <stop offset="100%" stop-color="#616161"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Простая форма камня -->
+  <path d="M15 35 Q10 25 20 20 Q25 15 35 20 Q40 25 35 35 Q30 40 20 35 Z" fill="url(#simpleStone)"/>
+  
+  <!-- Трещины -->
+  <g stroke="#424242" stroke-width="0.8" stroke-linecap="round">
+    <path d="M20 25 L23 28"/>
+    <path d="M25 22 L28 25"/>
+    <path d="M30 30 L33 33"/>
+  </g>
+  
+  <!-- Блеск (индикатор собираемости) -->
+  <circle cx="25" cy="25" r="1" fill="#ffffff" opacity="0.8">
+    <animate attributeName="opacity" values="0.4;0.8;0.4" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+</svg>

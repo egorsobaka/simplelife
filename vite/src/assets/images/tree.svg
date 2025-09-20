@@ -1,0 +1,100 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="treeTrunk" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b4513"/>
+      <stop offset="40%" stop-color="#a0522d"/>
+      <stop offset="70%" stop-color="#8b4513"/>
+      <stop offset="100%" stop-color="#654321"/>
+    </linearGradient>
+    
+    <linearGradient id="leafLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4caf50"/>
+      <stop offset="50%" stop-color="#388e3c"/>
+      <stop offset="100%" stop-color="#2e7d32"/>
+    </linearGradient>
+    
+    <linearGradient id="leafShadow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2e7d32"/>
+      <stop offset="100%" stop-color="#1b5e20"/>
+    </linearGradient>
+    
+    <linearGradient id="leafHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#81c784"/>
+      <stop offset="100%" stop-color="#66bb6a"/>
+    </linearGradient>
+    
+    <filter id="leafTexture" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+
+  <!-- Тень дерева -->
+  <ellipse cx="64" cy="115" rx="25" ry="8" fill="#2d2d2d" opacity="0.3" filter="url(#leafTexture)"/>
+  
+  <!-- Ствол дерева -->
+  <path d="M60 100 L60 60 L68 60 L68 100 Z" fill="url(#treeTrunk)"/>
+  
+  <!-- Текстура коры -->
+  <g stroke="#654321" stroke-width="1.5" stroke-linecap="round" opacity="0.7">
+    <path d="M62 65 L62 95"/>
+    <path d="M64 63 L64 93"/>
+    <path d="M66 65 L66 95"/>
+    <path d="M60 70 L68 72" opacity="0.5"/>
+    <path d="M60 80 L68 82" opacity="0.5"/>
+    <path d="M60 90 L68 92" opacity="0.5"/>
+  </g>
+
+  <!-- Основная крона (светлая часть) -->
+  <g filter="url(#leafTexture)">
+    <path d="M40 50 Q64 20 88 50 Q75 70 40 50 Z" fill="url(#leafLight)"/>
+    <path d="M35 60 Q64 30 93 60 Q80 80 35 60 Z" fill="url(#leafLight)"/>
+    <path d="M30 70 Q64 40 98 70 Q85 90 30 70 Z" fill="url(#leafLight)"/>
+  </g>
+
+  <!-- Теневые части кроны -->
+  <path d="M50 45 Q64 25 78 45 Q70 55 50 45 Z" fill="url(#leafShadow)" opacity="0.8"/>
+  <path d="M45 55 Q64 35 83 55 Q75 65 45 55 Z" fill="url(#leafShadow)" opacity="0.7"/>
+  <path d="M40 65 Q64 45 88 65 Q80 75 40 65 Z" fill="url(#leafShadow)" opacity="0.6"/>
+
+  <!-- Световые акценты на кроне -->
+  <path d="M70 40 Q64 30 58 40 Q62 45 70 40 Z" fill="url(#leafHighlight)" opacity="0.6"/>
+  <path d="M75 50 Q64 40 53 50 Q58 55 75 50 Z" fill="url(#leafHighlight)" opacity="0.5"/>
+  <path d="M80 60 Q64 50 48 60 Q55 65 80 60 Z" fill="url(#leafHighlight)" opacity="0.4"/>
+
+  <!-- Отдельные листья и ветки -->
+  <g fill="#4caf50" opacity="0.9">
+    <!-- Ветки -->
+    <g stroke="#8b4513" stroke-width="2" stroke-linecap="round">
+      <path d="M60 65 L55 70" opacity="0.8"/>
+      <path d="M64 63 L70 58" opacity="0.7"/>
+      <path d="M68 65 L75 62" opacity="0.6"/>
+      <path d="M62 70 L50 75" opacity="0.8"/>
+      <path d="M66 72 L80 68" opacity="0.7"/>
+    </g>
+    
+    <!-- Отдельные листья -->
+    <g>
+      <ellipse cx="55" cy="45" rx="4" ry="3" transform="rotate(-20 55 45)"/>
+      <ellipse cx="70" cy="48" rx="3" ry="4" transform="rotate(15 70 48)"/>
+      <ellipse cx="48" cy="55" rx="5" ry="3" transform="rotate(-30 48 55)"/>
+      <ellipse cx="75" cy="58" rx="4" ry="3" transform="rotate(25 75 58)"/>
+      <ellipse cx="60" cy="65" rx="3" ry="4" transform="rotate(-15 60 65)"/>
+      <ellipse cx="80" cy="62" rx="4" ry="3" transform="rotate(10 80 62)"/>
+      <ellipse cx="45" cy="70" rx="5" ry="4" transform="rotate(-40 45 70)"/>
+      <ellipse cx="85" cy="68" rx="4" ry="3" transform="rotate(20 85 68)"/>
+    </g>
+  </g>
+
+  <!-- Детализация кроны (дырки и прорехи) -->
+  <g fill="#1b5e20" opacity="0.3">
+    <path d="M55 40 Q60 35 65 40 Q63 42 55 40 Z"/>
+    <path d="M70 45 Q75 40 80 45 Q78 47 70 45 Z"/>
+    <path d="M50 60 Q55 55 60 60 Q58 62 50 60 Z"/>
+    <path d="M75 55 Q80 50 85 55 Q83 57 75 55 Z"/>
+  </g>
+
+  <!-- Основание ствола -->
+  <path d="M58 100 L58 105 L70 105 L70 100 Z" fill="#654321"/>
+  <ellipse cx="64" cy="105" rx="8" ry="3" fill="#5d4037" opacity="0.8"/>
+</svg>

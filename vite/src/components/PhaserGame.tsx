@@ -21,7 +21,7 @@ export const PhaserGame: React.FC<PhaserGameProps> = ({ onGameCreated }) => {
           default: 'arcade',
           arcade: {
             gravity: { y: 0, x: 0 },
-            debug: import.meta.env.DEV // debug только в development
+            debug: false && import.meta.env.DEV // debug только в development
           }
         },
         scene: [MainScene],

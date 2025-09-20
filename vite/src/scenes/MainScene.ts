@@ -3,6 +3,7 @@ import { GameEventBus } from '../utils/GameEventBus';
 import { ChunkManager } from './chunks/ChunkManager';
 import { Player } from './entities/Player';
 import { Joystick } from '../components/Joystick';
+import { AssetLoader } from '../utils/assetLoader';
 
 export class MainScene extends Phaser.Scene {
   private eventBus: GameEventBus;
@@ -21,20 +22,34 @@ export class MainScene extends Phaser.Scene {
     this.eventBus = GameEventBus.getInstance();
   }
 
-  preload() {
-    this.load.image('star', 'https://labs.phaser.io/assets/sprites/star.png');
-    this.load.image('player', 'https://labs.phaser.io/assets/sprites/phaser-dude.png');
+  async preload() {
+    await AssetLoader.loadAssets(this);
+    this.loadDefaultAssets();
+  }
 
-    // Загрузка спрайтов предметов
-    this.load.spritesheet('items', 'https://labs.phaser.io/assets/sprites/items.png', {
-      frameWidth: 32,
-      frameHeight: 32
+  private loadDefaultAssets(): void {
+    // Проверяем и загружаем обязательные assets если они не загрузились автоматически
+    const requiredAssets = ['player', 'star', 'items'];
+
+    requiredAssets.forEach(asset => {
+      if (!this.textures.exists(asset)) {
+        // Загружаем стандартные assets
+        switch (asset) {
+          case 'player':
+            this.load.image('player', 'https://labs.phaser.io/assets/sprites/phaser-dude.png');
+            break;
+          case 'star':
+            this.load.image('star', 'https://labs.phaser.io/assets/sprites/star.png');
+            break;
+          case 'items':
+            this.load.spritesheet('items', 'https://labs.phaser.io/assets/sprites/items.png', {
+              frameWidth: 32,
+              frameHeight: 32
+            });
+            break;
+        }
+      }
     });
-
-    // Загрузка спрайтов препятствий (временные заглушки)
-    this.load.image('tree', 'https://labs.phaser.io/assets/sprites/tree.png');
-    this.load.image('rock', 'https://labs.phaser.io/assets/sprites/rock.png');
-    this.load.image('bush', 'https://labs.phaser.io/assets/sprites/bush.png');
   }
 
   create() {
@@ -71,7 +86,7 @@ export class MainScene extends Phaser.Scene {
     };
 
     createPlaceholder(0x228822, 'tree'); // Зеленый для деревьев
-    createPlaceholder(0x888888, 'rock'); // Серый для камней
+    createPlaceholder(0xf0f0f8, 'rock'); // Серый для камней
     createPlaceholder(0x44aa44, 'bush'); // Светло-зеленый для кустов
   }
 
@@ -141,7 +156,7 @@ export class MainScene extends Phaser.Scene {
       this.tweens.add({
         targets: messageText,
         alpha: 0,
-        duration: 2000,
+        duration: 1000,
         onComplete: () => messageText.destroy()
       });
     });
@@ -168,13 +183,15 @@ export class MainScene extends Phaser.Scene {
   }
 
   private checkIfObstacleIsSolid(player: any, obstacle: any): boolean {
+    console.log('player', player);
     return obstacle.getData('isSolid') === true;
   }
 
   private handleObstacleCollision(player: any, obstacle: any): void {
+    console.log('player', player);
     // Устанавливаем состояние столкновения для игрока
     this.player.setColliding(true);
-    
+
     // Можно добавить дополнительную логику при столкновении
     const obstacleType = obstacle.getData('type');
     if (obstacleType === 'tree') {
@@ -185,17 +202,48 @@ export class MainScene extends Phaser.Scene {
   }
 
   private collectItem(player: any, item: any): void {
+    console.log('player', player);
     if (item.getData('collected')) return;
 
-    const itemType = item.getData('itemType');
+    const itemType = item.getData('itemType') || item.getData('type');
+    const quantity = item.getData('itemQuantity') || 1;
+    const isEdible = item.getData('isEdible');
+    const healthEffect = item.getData('healthEffect') || 0;
 
     // Отправляем событие в стор
-    this.eventBus.emit('itemCollected', { itemType });
+    this.eventBus.emit('itemCollected', {
+      player,
+      itemType,
+      quantity,
+      isEdible,
+      healthEffect,
+      position: { x: item.x, y: item.y }
+    });
 
-    // Визуальная обратная связь
-    this.events.emit('showMessage', `Найден: ${this.getItemName(itemType)}`);
+    if (itemType === 'gold_ore') {
+      this.events.emit('showMessage', 'Найдена золотая жила!');
+      this.createSparkleEffect(item.x, item.y, 0xffd700);
+    } else {
+      this.events.emit('showMessage', `Подобран: ${this.getItemName(itemType)}`);
+    }if (itemType === 'wood') {
+      this.events.emit('showMessage', `Собрано дров: +${quantity}`);
+      // Эффект сбора
+      this.createWoodCollectionEffect(item.x, item.y);
+    } else 
+    if (itemType === "mushroom") {
+      // Разные сообщения для разных грибов
+      if (!isEdible) {
+        this.events.emit('showMessage', '⚠️ Ядовитый гриб! Будьте осторожны');
+        this.createPoisonEffect(item.x, item.y);
+      } else if (healthEffect > 15) {
+        this.events.emit('showMessage', '🎯 Ценный гриб! +' + healthEffect + ' HP');
+        this.createHealEffect(item.x, item.y);
+      } else {
+        this.events.emit('showMessage', '🍄 Собран гриб: +' + healthEffect + ' HP');
+        this.createMushroomEffect(item.x, item.y);
+      }
+    }
 
-    // Помечаем как собранный и удаляем
     item.setData('collected', true);
     item.disableBody(true, true);
 
@@ -204,6 +252,70 @@ export class MainScene extends Phaser.Scene {
         item.destroy();
       }
     });
+  }
+
+  private createHealEffect(x: number, y: number): void {
+    const heal = this.add.particles(x, y, 'items', {
+      speed: { min: 40, max: 100 },
+      angle: { min: 270, max: 360 },
+      scale: { start: 0.4, end: 0 },
+      lifespan: 1000,
+      quantity: 10,
+      tint: 0x4caf50
+    });
+    this.time.delayedCall(1000, () => heal.destroy());
+  }
+
+  private createPoisonEffect(x: number, y: number): void {
+    const poison = this.add.particles(x, y, 'items', {
+      speed: { min: 20, max: 60 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.3, end: 0 },
+      lifespan: 1500,
+      quantity: 8,
+      tint: 0xff5252
+    });
+    this.time.delayedCall(1500, () => poison.destroy());
+  }
+
+  private createMushroomEffect(x: number, y: number): void {
+    const spores = this.add.particles(x, y, 'items', {
+      speed: { min: 30, max: 80 },
+      angle: { min: 180, max: 360 },
+      scale: { start: 0.2, end: 0 },
+      lifespan: 1200,
+      quantity: 6,
+      tint: 0x8bc34a
+    });
+    this.time.delayedCall(1200, () => spores.destroy());
+  }
+
+  private createWoodCollectionEffect(x: number, y: number): void {
+    // Эффект щепок
+    const chips = this.add.particles(x, y, 'items', {
+      speed: { min: 50, max: 150 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.3, end: 0 },
+      blendMode: 'NORMAL',
+      lifespan: 800,
+      quantity: 8,
+      tint: 0x8d6e63
+    });
+
+    this.time.delayedCall(800, () => chips.destroy());
+  }
+
+  private createSparkleEffect(x: number, y: number, color: number): void {
+    const particles = this.add.particles(x, y, 'items', {
+      speed: 100,
+      scale: { start: 0.5, end: 0 },
+      blendMode: 'ADD',
+      lifespan: 1000,
+      quantity: 10,
+      color: [color],
+    });
+
+    this.time.delayedCall(1000, () => particles.destroy());
   }
 
   private getItemName(itemType: string): string {
@@ -218,7 +330,7 @@ export class MainScene extends Phaser.Scene {
   update() {
     this.handleMovement();
     this.updateChunks();
-    
+
     // Сбрасываем состояние столкновения каждый кадр
     this.player.setColliding(false);
   }
@@ -226,7 +338,7 @@ export class MainScene extends Phaser.Scene {
   private handleMovement(): void {
     let velocityX = 0;
     let velocityY = 0;
-    const speed = 200;
+    const speed = 100;
 
     if (this.cursors.left.isDown) velocityX = -speed;
     if (this.cursors.right.isDown) velocityX = speed;

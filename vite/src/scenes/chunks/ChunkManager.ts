@@ -1,6 +1,7 @@
 // src/scenes/chunks/ChunkManager.ts
 import { TerrainGenerator } from './TerrainGenerator';
 import { ItemManager } from '../entities/items/ItemManager';
+import { AssetLoader } from '@/utils/assetLoader';
 
 interface Chunk {
   x: number;
@@ -52,7 +53,7 @@ export class ChunkManager {
         graphics.fillStyle(this.terrainGenerator.getTerrainColor(tileType));
         graphics.fillRect(tileX, tileY, this.tileSize, this.tileSize);
 
-        graphics.lineStyle(1, 0x000000, 0.2);
+        // graphics.lineStyle(1, 0x000000, 0.2);
         graphics.strokeRect(tileX, tileY, this.tileSize, this.tileSize);
       }
     }
@@ -91,6 +92,18 @@ export class ChunkManager {
           spawnChance = 0.2;
         } else if (this.terrainGenerator.canSpawnItem(tileType, 'stone')) {
           itemType = 'stone';
+          spawnChance = 0.15;
+        } else if (this.terrainGenerator.canSpawnItem(tileType, 'gold_vein')) {
+          itemType = 'gold_vein';
+          spawnChance = 0.15;
+        } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom')) {
+          itemType = 'mushroom';
+          spawnChance = 0.15;
+        } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom_poison')) {
+          itemType = 'mushroom_poison';
+          spawnChance = 0.15;
+        } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom_rate')) {
+          itemType = 'mushroom_rate';
           spawnChance = 0.15;
         }
 
@@ -139,8 +152,9 @@ export class ChunkManager {
   }
 
   private createItemEntity(itemType: string, x: number, y: number): void {
-    const item = this.itemsGroup.create(x, y, 'items', this.getItemFrame(itemType));
-    item.setScale(0.7);
+    const randomSprite = AssetLoader.getRandomAsset(itemType);
+    const item = this.itemsGroup.create(x, y, randomSprite || "");
+    item.setScale(0.5);
     item.setData('itemType', itemType);
     item.setData('collected', false);
     item.setInteractive();
@@ -150,23 +164,34 @@ export class ChunkManager {
   private createObstacleEntity(obstacleType: string, x: number, y: number): Phaser.Physics.Arcade.Sprite | null {
     try {
       const config = this.terrainGenerator.getObstacleConfig(obstacleType);
-      const obstacle = this.obstaclesGroup.create(x, y, config.sprite);
+
+      // Получаем случайный спрайт через AssetLoader
+      const randomSprite = AssetLoader.getRandomAsset(obstacleType);
+
+      if (!randomSprite) {
+        console.warn(`No sprite available for obstacle type: ${obstacleType}`);
+        return null;
+      }
+
+      // Проверяем что текстура существует
+      if (!this.scene.textures.exists(randomSprite)) {
+        console.warn(`Texture not loaded: ${randomSprite}`);
+        return null;
+      }
+
+      const obstacle = this.obstaclesGroup.create(x, y, randomSprite);
+
+      if (config.isSolid) {
+        obstacle.setImmovable(true);
+      }
 
       obstacle.setData('type', obstacleType);
       obstacle.setData('isSolid', config.isSolid);
       obstacle.setData('canInteract', config.canInteract);
+      obstacle.setData('spriteName', randomSprite); // Сохраняем имя спрайта
 
-      // Настраиваем размер коллайдера в зависимости от типа препятствия
-      if (obstacleType === 'tree') {
-        obstacle.body.setSize(40, 40);
-        obstacle.setScale(0.8);
-      } else if (obstacleType === 'rock') {
-        obstacle.body.setSize(30, 30);
-        obstacle.setScale(0.7);
-      } else if (obstacleType === 'bush') {
-        obstacle.body.setSize(25, 25);
-        obstacle.setScale(0.6);
-      }
+      // Настраиваем размер коллайдера
+      this.setupObstaclePhysics(obstacle, obstacleType);
 
       return obstacle;
     } catch (error) {
@@ -175,13 +200,28 @@ export class ChunkManager {
     }
   }
 
-  private getItemFrame(itemType: string): number {
-    const frames: { [key: string]: number } = {
-      'star': 0,
-      'wood': 1,
-      'stone': 2
-    };
-    return frames[itemType] || 0;
+  private setupObstaclePhysics(obstacle: Phaser.Physics.Arcade.Sprite, obstacleType: string): void {
+    switch (obstacleType) {
+      case 'tree':
+        obstacle.body?.setSize(40, 40);
+        obstacle.setScale(0.5);
+        break;
+      case 'rock':
+        obstacle.body?.setSize(30, 30);
+        obstacle.setScale(0.5);
+        break;
+      case 'bush':
+        obstacle.body?.setSize(25, 25);
+        obstacle.setScale(0.1);
+        break;
+      case 'mountain':
+        obstacle.body?.setSize(50, 50);
+        obstacle.setScale(1);
+        break;
+      default:
+        obstacle.body?.setSize(30, 30);
+        obstacle.setScale(0.1);
+    }
   }
 
   unloadChunk(chunkX: number, chunkY: number): void {

@@ -11,6 +11,6 @@ export class WoodItem extends Item {
   }
 
   onUse(scene: Phaser.Scene): void {
-    // Можно использовать для крафта
+     scene.events.emit('showMessage', 'Использовано дерево');
   }
 }

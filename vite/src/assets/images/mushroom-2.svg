@@ -1,0 +1,41 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="chanterelle" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffb74d"/>
+      <stop offset="50%" stop-color="#ff9800"/>
+      <stop offset="100%" stop-color="#f57c00"/>
+    </linearGradient>
+    
+    <linearGradient id="chanterelleStem" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffcc80"/>
+      <stop offset="100%" stop-color="#ffb74d"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Группа лисичек -->
+  <!-- Большая лисичка -->
+  <path d="M30 45 L30 35 Q25 30 30 25 Q35 30 30 35 Z" fill="url(#chanterelle)"/>
+  
+  <!-- Средняя лисичка -->
+  <path d="M40 40 L40 33 Q37 30 40 27 Q43 30 40 33 Z" fill="url(#chanterelle)" opacity="0.9"/>
+  
+  <!-- Маленькая лисичка -->
+  <path d="M25 38 L25 34 Q23 32 25 30 Q27 32 25 34 Z" fill="url(#chanterelle)" opacity="0.8"/>
+  
+  <!-- Ножки -->
+  <path d="M30 45 L30 40" stroke="url(#chanterelleStem)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M40 40 L40 38" stroke="url(#chanterelleStem)" stroke-width="2" stroke-linecap="round"/>
+  <path d="M25 38 L25 36" stroke="url(#chanterelleStem)" stroke-width="1.5" stroke-linecap="round"/>
+  
+  <!-- Волнистые края -->
+  <g stroke="#e65100" stroke-width="0.8" stroke-linecap="round" opacity="0.7">
+    <path d="M28 32 Q30 31 32 32"/>
+    <path d="M38 29 Q40 28 42 29"/>
+    <path d="M23 31 Q25 30 27 31"/>
+  </g>
+  
+  <!-- Блеск -->
+  <circle cx="32" cy="30" r="1" fill="#ffeb3b" opacity="0.9">
+    <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1.3s" repeatCount="indefinite"/>
+  </circle>
+</svg>

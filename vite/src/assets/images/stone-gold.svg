@@ -1,0 +1,38 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="goldStone" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8d6e63"/>
+      <stop offset="100%" stop-color="#5d4037"/>
+    </linearGradient>
+    
+    <linearGradient id="goldVein" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffd54f"/>
+      <stop offset="100%" stop-color="#ffb300"/>
+    </linearGradient>
+    
+    <linearGradient id="goldHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff176"/>
+      <stop offset="100%" stop-color="#ffd54f"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Основной камень -->
+  <path d="M20 45 Q15 35 25 30 Q30 25 40 30 Q45 35 40 45 Q35 50 25 45 Z" fill="url(#goldStone)"/>
+  
+  <!-- Золотые жилы -->
+  <path d="M22 32 L28 28 L32 35 L26 38 Z" fill="url(#goldVein)"/>
+  <path d="M30 40 L35 35 L38 42 L33 45 Z" fill="url(#goldVein)"/>
+  <path d="M35 30 L40 25 L42 32 L38 35 Z" fill="url(#goldVein)"/>
+  
+  <!-- Блеск золота -->
+  <path d="M25 30 L27 28 L28 30 Z" fill="url(#goldHighlight)"/>
+  <path d="M33 38 L35 36 L36 38 Z" fill="url(#goldHighlight)"/>
+  
+  <!-- Сияющий эффект -->
+  <circle cx="28" cy="30" r="1" fill="#ffffff" opacity="0.9">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="1s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="36" cy="38" r="0.8" fill="#ffffff" opacity="0.8">
+    <animate attributeName="opacity" values="0.5;0.9;0.5" dur="0.8s" repeatCount="indefinite" begin="0.3s"/>
+  </circle>
+</svg>

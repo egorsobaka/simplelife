@@ -11,6 +11,6 @@ export class StarItem extends Item {
   }
 
   onUse(scene: Phaser.Scene): void {
-    // Звезды нельзя использовать, только собирать
+    scene.events.emit('showMessage', 'Использована звезда! +10 очков');
   }
 }

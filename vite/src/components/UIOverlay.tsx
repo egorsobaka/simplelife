@@ -5,7 +5,6 @@ import { useTelegram } from '../hooks/useTelegram';
 
 export const UIOverlay: React.FC = () => {
   const [score, setScore] = useState(0);
-  const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0 });
   const { onEvent, emitEvent } = useGameEvents();
   const { user, showAlert, closeApp } = useTelegram();
   
