@@ -17,7 +17,7 @@ services:
   frontend:
     container_name: phaser-frontend
     build:
-      context: ./frontend   # папка с React/Phaser
+      context: ./vite   # папка с React/Phaser
       dockerfile: Dockerfile
     restart: always
     ports:

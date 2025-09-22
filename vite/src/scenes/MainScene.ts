@@ -124,6 +124,7 @@ export class MainScene extends Phaser.Scene {
     });
 
     this.eventBus.on('doAction', ({ action }: any) => {
+      console.log("action", action);
       this.time.delayedCall(100, () => {
         if (this.currentItem) {
           this.currentItem.destroy();
