@@ -9,16 +9,28 @@ export interface InventoryItem {
   quantity: number;
 }
 
+export interface Action {
+  id: string;
+  type: string;
+  label: string;
+  icon: string;
+}
+
 interface GameState {
   // Инвентарь как простой объект
   inventory: Record<string, InventoryItem>;
   score: number;
-  
+  actions: Record<string, Action>;
+
   // Действия
   addToInventory: (item: Omit<InventoryItem, 'quantity'>) => void;
   removeFromInventory: (itemId: string, quantity?: number) => void;
   updateScore: (points: number) => void;
   resetGame: () => void;
+  addAction: (action: Action) => void;
+  removeAction: (action: Action ) => void;
+  clearActions: () => void;
+
 }
 
 export const useGameStore = create<GameState>()(
@@ -26,7 +38,33 @@ export const useGameStore = create<GameState>()(
     (set, get) => ({
       inventory: {},
       score: 0,
-
+      actions: {},
+      addAction: (action: Action) => {
+        const state = get();
+        const existing = state.actions[action.id];
+        if (!existing) {
+          set({
+            actions: {
+              ...state.actions,
+              [action.id]: {
+                ...action,
+              },
+            },
+          });
+        }
+      },
+      clearActions: () => {
+        set({ actions: {} });
+      },
+      removeAction: (action: Action) => {
+        const state = get();
+        const existing = state.actions[action.id];
+        if (!existing) {
+          const newActions = { ...state.actions };
+          delete newActions[action.id];
+          set({ actions: newActions });
+        }
+      },
       addToInventory: (item) => {
         const state = get();
         const existing = state.inventory[item.id];
@@ -82,7 +120,7 @@ export const useGameStore = create<GameState>()(
       },
 
       resetGame: () => {
-        set({ inventory: {}, score: 0 });
+        set({ inventory: {}, actions: {}, score: 0 });
       },
     }),
     {

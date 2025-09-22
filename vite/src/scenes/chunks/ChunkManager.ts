@@ -154,7 +154,13 @@ export class ChunkManager {
   private createItemEntity(itemType: string, x: number, y: number): void {
     const randomSprite = AssetLoader.getRandomAsset(itemType);
     const item = this.itemsGroup.create(x, y, randomSprite || "");
-    item.setScale(0.5);
+
+    switch (itemType) {
+      case "mushroom": item.setScale(0.5); break;
+      case "wood": item.setScale(0.3); break;
+      default: item.setScale(0.5);
+    }
+    
     item.setData('itemType', itemType);
     item.setData('collected', false);
     item.setInteractive();
@@ -212,7 +218,7 @@ export class ChunkManager {
         break;
       case 'bush':
         obstacle.body?.setSize(25, 25);
-        obstacle.setScale(0.1);
+        obstacle.setScale(0.2);
         break;
       case 'mountain':
         obstacle.body?.setSize(50, 50);

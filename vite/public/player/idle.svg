@@ -1,0 +1,45 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffdbac"/>
+      <stop offset="100%" stop-color="#f0c8a4"/>
+    </linearGradient>
+    
+    <linearGradient id="shirt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3498db"/>
+      <stop offset="100%" stop-color="#2980b9"/>
+    </linearGradient>
+    
+    <linearGradient id="pants" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e74c3c"/>
+      <stop offset="100%" stop-color="#c0392b"/>
+    </linearGradient>
+    
+    <linearGradient id="hair" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b4513"/>
+      <stop offset="100%" stop-color="#654321"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Голова -->
+  <circle cx="32" cy="20" r="12" fill="url(#skin)"/>
+  
+  <!-- Волосы -->
+  <path d="M20 15 Q32 5 44 15 Q40 25 20 15 Z" fill="url(#hair)"/>
+  
+  <!-- Тело -->
+  <path d="M28 32 L28 48 L36 48 L36 32 Z" fill="url(#shirt)"/>
+  
+  <!-- Ноги -->
+  <path d="M28 48 L26 58 L30 58 L28 48 Z" fill="url(#pants)"/>
+  <path d="M36 48 L34 58 L38 58 L36 48 Z" fill="url(#pants)"/>
+  
+  <!-- Руки -->
+  <path d="M28 36 L22 40 L24 42 L28 38 Z" fill="url(#skin)"/>
+  <path d="M36 36 L42 40 L40 42 L36 38 Z" fill="url(#skin)"/>
+  
+  <!-- Лицо -->
+  <circle cx="28" cy="18" r="1.5" fill="#2c3e50"/> <!-- Левый глаз -->
+  <circle cx="36" cy="18" r="1.5" fill="#2c3e50"/> <!-- Правый глаз -->
+  <path d="M30 24 Q32 26 34 24" stroke="#2c3e50" stroke-width="1" fill="none"/> <!-- Рот -->
+</svg>

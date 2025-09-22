@@ -104,7 +104,7 @@ export class TerrainGenerator {
       },
       bush: {
         sprite: availableSprites.length > 0 ? availableSprites : ['bush'],
-        isSolid: false,
+        isSolid: true,
         canInteract: true
       },
       mountain: {

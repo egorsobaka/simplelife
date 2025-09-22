@@ -43,11 +43,33 @@ export class GameEventBus {
       const item = items[data.itemType as keyof typeof items];
       if (item) {
         addToInventory(item);
-        
+
         if (data.itemType === 'star') {
           updateScore(10);
         }
       }
+    });
+  }
+
+  public static setupAvailableActionListeners(): void {
+
+    const { addAction, clearActions } = useGameStore.getState();
+    const instance = GameEventBus.getInstance();
+    instance.on('enableAction', (data: { action: string }) => {
+      const actions = {
+        star: { id: 'star', label: 'Звезда', icon: '⭐', type: 'star' },
+        tree: { id: 'wood', label: 'Дерево', icon: '🪵', type: 'wood' },
+        stone: { id: 'stone', label: 'Камень', icon: '🪨', type: 'stone' }
+      };
+
+      const item = actions[data.action as keyof typeof actions];
+      if (item) {
+        addAction(item);
+      }
+    });
+
+    instance.on('disableActions', () => {
+      clearActions();
     });
   }
 }
