@@ -2,7 +2,6 @@
 import { GameEventBus } from '../utils/GameEventBus';
 import { ChunkManager } from './chunks/ChunkManager';
 import { Player } from './entities/Player';
-import { Joystick } from '../components/Joystick';
 import { AssetLoader } from '../utils/assetLoader';
 
 export class MainScene extends Phaser.Scene {
@@ -11,7 +10,6 @@ export class MainScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private score: number = 0;
   private scoreText!: Phaser.GameObjects.Text;
-  private joystick!: Joystick;
   private chunkManager!: ChunkManager;
   private playerChunk: { x: number; y: number } = { x: 0, y: 0 };
   private itemsGroup!: Phaser.Physics.Arcade.Group;
@@ -99,6 +97,7 @@ export class MainScene extends Phaser.Scene {
     this.input.setDraggable(this.joystickThumb);
 
     this.input.on("drag", (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.GameObject, dragX: number, dragY: number) => {
+      console.log("pointer", pointer);
       if (gameObject !== this.joystickThumb) return;
 
       const dx = dragX - this.joystickBase.x;
