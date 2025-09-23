@@ -59,7 +59,7 @@ export const GameWrapper: React.FC = () => {
           onButtonClick={function (action: ButtonConfig): void {
             console.log("doAction", action);
             GameEventBus.getInstance().emit("doAction", { action });
-          }} position="top" />
+          }} position="right" />
       )}
 
       {/* Панели интерфейса */}

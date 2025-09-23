@@ -38,9 +38,9 @@ export const ActionsPanel: React.FC<ButtonPanelProps> = ({
       case 'left':
         return { ...baseStyle, left: '20px', top: '50%', transform: 'translateY(-50%)', flexDirection: 'column' };
       case 'right':
-        return { ...baseStyle, right: '20px', top: '50%', transform: 'translateY(-50%)', flexDirection: 'column' };
+        return { ...baseStyle, right: '20px', bottom: '100px', transform: 'translateY(-50%)', flexDirection: 'column' };
       default:
-        return { ...baseStyle, bottom: '20px', left: '50%', transform: 'translateX(-50%)' };
+        return { ...baseStyle, bottom: '130px', left: '20%', transform: 'translateX(-50%)' };
     }
   };
 
