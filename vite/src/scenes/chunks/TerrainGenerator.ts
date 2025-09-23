@@ -52,7 +52,7 @@ export class TerrainGenerator {
   canSpawnItem(terrainType: number, itemType: string): boolean {
     switch (itemType) {
       case 'star':
-        return terrainType === this.terrainTypes.GRASS;
+        return [this.terrainTypes.FOREST, this.terrainTypes.GRASS, this.terrainTypes.SAND].includes(terrainType);
       case 'wood':
         return terrainType === this.terrainTypes.FOREST;
       case 'stone':
@@ -116,6 +116,13 @@ export class TerrainGenerator {
         sprite: availableSprites.length > 0 ? availableSprites : ['stone'],
         isSolid: true,
         canInteract: false
+      },
+      star: {
+        sprite: AssetLoader.getAllAssets('star'),
+        isSolid: false, // Дрова проходимы
+        canInteract: true,
+        itemType: 'star',
+        itemQuantity: 3 // Дает 3 единицы дерева
       },
       wood: {
         sprite: AssetLoader.getAllAssets('wood'),

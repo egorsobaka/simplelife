@@ -158,6 +158,7 @@ export class ChunkManager {
     switch (itemType) {
       case "mushroom": item.setScale(0.5); break;
       case "wood": item.setScale(0.3); break;
+      case "star": item.setScale(0.1); break;
       default: item.setScale(0.5);
     }
     

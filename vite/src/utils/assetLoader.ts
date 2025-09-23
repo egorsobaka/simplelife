@@ -44,6 +44,7 @@ export class AssetLoader {
         if (fileName.startsWith('wood')) return 'wood';
         if (fileName.startsWith('gold_vein')) return 'gold_vein';
         if (fileName.startsWith('mushroom')) return 'mushroom';
+        if (fileName.startsWith('star')) return 'star';
 
         return 'other';
     }

@@ -38,13 +38,10 @@ export class MainScene extends Phaser.Scene {
         // Загружаем стандартные assets
         switch (asset) {
           case 'star':
-            this.load.image('star', 'https://labs.phaser.io/assets/sprites/star.png');
+            this.load.image('star', '/star.png');
             break;
           case 'items':
-            this.load.spritesheet('items', 'https://labs.phaser.io/assets/sprites/items.png', {
-              frameWidth: 32,
-              frameHeight: 32
-            });
+            this.load.spritesheet('items', '/roguelikeSheet_transparent.png', { frameWidth: 16, frameHeight: 16, spacing: 1 });
             break;
         }
       }
@@ -89,9 +86,9 @@ export class MainScene extends Phaser.Scene {
     const size = 60;
     const alpha = 0.3;
 
-    this.joystickBase = this.add.circle(centerX, centerY, size, 0x0000ff, 0.1).setScrollFactor(0).setDepth(1000);
-    this.joystickThumb = this.add.circle(centerX, centerY, size / 1.5, 0x00ff00, alpha).setScrollFactor(0).setInteractive().setDepth(1001);
-    this.container = this.add.container(0, 0, [this.joystickBase, this.joystickThumb]);
+    this.joystickBase = this.add.circle(centerX, centerY, size, 0x0000ff, 0.1).setScrollFactor(0).setDepth(2000);
+    this.joystickThumb = this.add.circle(centerX, centerY, size / 1.5, 0x00ff00, alpha).setScrollFactor(0).setInteractive().setDepth(2001);
+    this.container = this.add.container(0, 0, [this.joystickBase, this.joystickThumb]).setScrollFactor(0).setDepth(20000);
 
     // Включаем drag
     this.input.setDraggable(this.joystickThumb);
@@ -289,22 +286,22 @@ export class MainScene extends Phaser.Scene {
     switch (itemType) {
       case 'gold_ore':
         this.events.emit('showMessage', 'Найдена золотая жила!');
-        this.createSparkleEffect(item.x, item.y, 0xffd700);
+        // this.createSparkleEffect(item.x, item.y, 0xffd700);
         break;
 
       case 'wood':
         this.events.emit('showMessage', `Собрано дров: +${quantity}`);
-        this.createWoodCollectionEffect(item.x, item.y);
+        // this.createWoodCollectionEffect(item.x, item.y);
         break;
 
       case 'stone':
         this.events.emit('showMessage', `Подобран камень: +${quantity}`);
-        this.createSparkleEffect(item.x, item.y, 0x888888);
+        // this.createSparkleEffect(item.x, item.y, 0x888888);
         break;
 
       case 'star':
         this.events.emit('showMessage', '⭐ Найдена звезда! +10 очков');
-        this.createSparkleEffect(item.x, item.y, 0xffff00);
+        // this.createSparkleEffect(item.x, item.y, 0xffff00);
         break;
 
       case 'mushroom':
@@ -313,13 +310,13 @@ export class MainScene extends Phaser.Scene {
         // Обработка всех типов грибов
         if (!isEdible) {
           this.events.emit('showMessage', '⚠️ Ядовитый гриб! Будьте осторожны');
-          this.createPoisonEffect(item.x, item.y);
+          // this.createPoisonEffect(item.x, item.y);
         } else if (healthEffect > 15) {
           this.events.emit('showMessage', '🎯 Ценный гриб! +' + healthEffect + ' HP');
-          this.createHealEffect(item.x, item.y);
+          // this.createHealEffect(item.x, item.y);
         } else {
           this.events.emit('showMessage', '🍄 Собран гриб: +' + healthEffect + ' HP');
-          this.createMushroomEffect(item.x, item.y);
+          // this.createMushroomEffect(item.x, item.y);
         }
         break;
 
@@ -340,70 +337,69 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
-  private createHealEffect(x: number, y: number): void {
-    const heal = this.add.particles(x, y, 'items', {
-      speed: { min: 40, max: 100 },
-      angle: { min: 270, max: 360 },
-      scale: { start: 0.4, end: 0 },
-      lifespan: 1000,
-      quantity: 10,
-      tint: 0x4caf50
-    });
-    this.time.delayedCall(1000, () => heal.destroy());
-  }
+  // private createHealEffect(x: number, y: number): void {
+  //   const heal = this.add.particles(x, y, 'items', {
+  //     speed: { min: 40, max: 100 },
+  //     angle: { min: 270, max: 360 },
+  //     scale: { start: 0.4, end: 0 },
+  //     lifespan: 1000,
+  //     quantity: 10,
+  //     tint: 0x4caf50
+  //   });
+  //   this.time.delayedCall(1000, () => heal.destroy());
+  // }
 
-  private createPoisonEffect(x: number, y: number): void {
-    const poison = this.add.particles(x, y, 'items', {
-      speed: { min: 20, max: 60 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 0.3, end: 0 },
-      lifespan: 1500,
-      quantity: 8,
-      tint: 0xff5252
-    });
-    this.time.delayedCall(1500, () => poison.destroy());
-  }
+  // private createPoisonEffect(x: number, y: number): void {
+  //   const poison = this.add.particles(x, y, 'items', {
+  //     speed: { min: 20, max: 60 },
+  //     angle: { min: 0, max: 360 },
+  //     scale: { start: 0.3, end: 0 },
+  //     lifespan: 1500,
+  //     quantity: 8,
+  //     tint: 0xff5252
+  //   });
+  //   this.time.delayedCall(1500, () => poison.destroy());
+  // }
 
-  private createMushroomEffect(x: number, y: number): void {
-    const spores = this.add.particles(x, y, 'items', {
-      speed: { min: 30, max: 80 },
-      angle: { min: 180, max: 360 },
-      scale: { start: 0.2, end: 0 },
-      lifespan: 1200,
-      quantity: 6,
-      tint: 0x8bc34a
-    });
-    this.time.delayedCall(1200, () => spores.destroy());
-  }
+  // private createMushroomEffect(x: number, y: number): void {
+  //   const spores = this.add.particles(x, y, 'items', {
+  //     speed: { min: 30, max: 80 },
+  //     angle: { min: 180, max: 360 },
+  //     scale: { start: 0.2, end: 0 },
+  //     lifespan: 1200,
+  //     quantity: 6,
+  //     tint: 0x8bc34a
+  //   });
+  //   this.time.delayedCall(1200, () => spores.destroy());
+  // }
 
   private createWoodCollectionEffect(x: number, y: number): void {
-    // Эффект щепок
-    const chips = this.add.particles(x, y, 'items', {
+    const chips = this.add.particles(x, y, 'tree', {
       speed: { min: 50, max: 150 },
       angle: { min: 0, max: 360 },
       scale: { start: 0.3, end: 0 },
       blendMode: 'NORMAL',
-      lifespan: 100,
-      quantity: 2,
-      tint: 0x8d6e63
+      lifespan: 300,
+      quantity: 3,
+      tint: 0x00ff00
     });
 
     this.time.delayedCall(800, () => chips.destroy());
   }
 
-  private createSparkleEffect(x: number, y: number, color: number): void {
-    const particles = this.add.particles(x, y, 'items', {
-      speed: 100,
-      scale: { start: 0.5, end: 0 },
-      blendMode: 'ADD',
-      lifespan: 1000,
-      quantity: 10,
-      color: [color],
-      tint: color,
-    });
+  // private createSparkleEffect(x: number, y: number, color: number): void {
+  //   const particles = this.add.particles(x, y, 'items', {
+  //     speed: 100,
+  //     scale: { start: 0.5, end: 0 },
+  //     blendMode: 'ADD',
+  //     lifespan: 1000,
+  //     quantity: 10,
+  //     color: [color],
+  //     tint: color,
+  //   });
 
-    this.time.delayedCall(1000, () => particles.destroy());
-  }
+  //   this.time.delayedCall(1000, () => particles.destroy());
+  // }
 
   private getItemName(itemType: string): string {
     const names: { [key: string]: string } = {
