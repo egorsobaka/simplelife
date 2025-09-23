@@ -17,6 +17,9 @@ export class MainScene extends Phaser.Scene {
   private itemsGroup!: Phaser.Physics.Arcade.Group;
   private obstaclesGroup!: Phaser.Physics.Arcade.StaticGroup;
   private currentItem: Phaser.Types.Physics.Arcade.GameObjectWithStaticBody | null = null;
+  joystickBase!: Phaser.GameObjects.Arc;
+  joystickThumb!: Phaser.GameObjects.Arc;
+  public container!: Phaser.GameObjects.Container;
 
   constructor() {
     super('MainScene');
@@ -54,6 +57,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   create() {
+
     this.physics.world.setBounds(-Number.MAX_SAFE_INTEGER / 2, -Number.MAX_SAFE_INTEGER / 2, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
 
     // Создаем группы для предметов и препятствий
@@ -67,15 +71,60 @@ export class MainScene extends Phaser.Scene {
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
     this.cursors = this.input!.keyboard!.createCursorKeys();
-    this.joystick = new Joystick(this, 100, this.cameras.main.height - 150);
 
     this.createUI();
     this.createPlaceholderSprites(); // Создаем временные спрайты если нужно
     this.generateInitialChunks();
     this.setupEventListeners();
     this.setupCollisions();
+    this.createJoystick();
+
   }
 
+  joystickData!: any;
+
+  createJoystick() {
+    const { width, height } = this.scale;
+    const centerX = width / 2;
+    const centerY = height / 2 + height / 4;
+
+    const size = 60;
+    const alpha = 0.3;
+
+    this.joystickBase = this.add.circle(centerX, centerY, size, 0x0000ff, 0.1).setScrollFactor(0).setDepth(1000);
+    this.joystickThumb = this.add.circle(centerX, centerY, size / 1.5, 0x00ff00, alpha).setScrollFactor(0).setInteractive().setDepth(1001);
+    this.container = this.add.container(0, 0, [this.joystickBase, this.joystickThumb]);
+
+    // Включаем drag
+    this.input.setDraggable(this.joystickThumb);
+
+    this.input.on("drag", (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.GameObject, dragX: number, dragY: number) => {
+      if (gameObject !== this.joystickThumb) return;
+
+      const dx = dragX - this.joystickBase.x;
+      const dy = dragY - this.joystickBase.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const maxDistance = size;
+      const angle = Math.atan2(dy, dx);
+
+      const clampedDistance = Math.min(distance, maxDistance);
+
+      this.joystickThumb.x = this.joystickBase.x + Math.cos(angle) * clampedDistance;
+      this.joystickThumb.y = this.joystickBase.y + Math.sin(angle) * clampedDistance;
+
+      this.joystickData = {
+        force: clampedDistance / maxDistance,
+        angle,
+        active: true
+      };
+    });
+
+    this.input.on("pointerup", () => {
+      this.joystickThumb.x = this.joystickBase.x;
+      this.joystickThumb.y = this.joystickBase.y;
+      this.joystickData = { active: false, force: 0, angle: 0 };
+    });
+  }
 
 
   private createPlaceholderSprites(): void {
@@ -372,19 +421,21 @@ export class MainScene extends Phaser.Scene {
     this.player.setColliding(false);
   }
 
+
   private handleMovement(): void {
     let velocityX = 0;
     let velocityY = 0;
     const speed = 100;
 
+    // const { isMove, newX, newY, anim } = handleMovementJoystick(mobileDir.x, mobileDir.y, maxSpeed, dt);
     if (this.cursors.left.isDown) velocityX = -speed;
     if (this.cursors.right.isDown) velocityX = speed;
     if (this.cursors.up.isDown) velocityY = -speed;
     if (this.cursors.down.isDown) velocityY = speed;
 
-    if (this.joystick.data.active) {
-      velocityX = Math.cos(this.joystick.data.angle) * speed * this.joystick.data.force;
-      velocityY = Math.sin(this.joystick.data.angle) * speed * this.joystick.data.force;
+    if (this.joystickData?.active) {
+      velocityX = Math.cos(this.joystickData.angle) * speed * this.joystickData.force;
+      velocityY = Math.sin(this.joystickData.angle) * speed * this.joystickData.force;
     }
 
     let moving = velocityX !== 0 || velocityY !== 0;
