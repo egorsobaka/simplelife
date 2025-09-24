@@ -59,6 +59,7 @@ export class GameEventBus {
       const actions = {
         star: { id: 'star', label: 'Звезда', icon: '⭐', type: 'star' },
         tree: { id: 'wood', label: 'Дерево', icon: '🪵', type: 'wood' },
+        bush: { id: 'wood', label: 'Дерево', icon: '🪵', type: 'wood' },
         stone: { id: 'stone', label: 'Камень', icon: '🪨', type: 'stone' }
       };
 

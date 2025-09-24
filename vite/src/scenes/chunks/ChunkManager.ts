@@ -54,7 +54,7 @@ export class ChunkManager {
         graphics.fillRect(tileX, tileY, this.tileSize, this.tileSize);
 
         // graphics.lineStyle(1, 0x000000, 0.2);
-        graphics.strokeRect(tileX, tileY, this.tileSize, this.tileSize);
+        // graphics.strokeRect(tileX, tileY, this.tileSize, this.tileSize);
       }
     }
 
@@ -84,30 +84,30 @@ export class ChunkManager {
         let itemType: string | null = null;
         let spawnChance = 0;
 
-        if (this.terrainGenerator.canSpawnItem(tileType, 'star')) {
+        if (this.terrainGenerator.canSpawnItem(tileType, 'star') && Math.random() < 0.1) {
           itemType = 'star';
           spawnChance = 0.1;
-        } else if (this.terrainGenerator.canSpawnItem(tileType, 'wood')) {
+        } else if (this.terrainGenerator.canSpawnItem(tileType, 'wood') && Math.random() < 0.2) {
           itemType = 'wood';
           spawnChance = 0.2;
-        } else if (this.terrainGenerator.canSpawnItem(tileType, 'stone')) {
+        } else if (this.terrainGenerator.canSpawnItem(tileType, 'stone') && Math.random() < 0.15) {
           itemType = 'stone';
           spawnChance = 0.15;
-        } else if (this.terrainGenerator.canSpawnItem(tileType, 'gold_vein')) {
+        } else if (this.terrainGenerator.canSpawnItem(tileType, 'gold_vein') && Math.random() < 0.15) {
           itemType = 'gold_vein';
           spawnChance = 0.15;
-        } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom')) {
+        } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom') && Math.random() < 0.15) {
           itemType = 'mushroom';
           spawnChance = 0.15;
-        } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom_poison')) {
+        } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom_poison') && Math.random() < 0.15) {
           itemType = 'mushroom_poison';
           spawnChance = 0.15;
-        } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom_rate')) {
+        } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom_rate') && Math.random() < 0.15) {
           itemType = 'mushroom_rate';
           spawnChance = 0.15;
         }
 
-        if (itemType && Math.random() < spawnChance) {
+        if (itemType) {
           const itemX = chunkWorldX + x * this.tileSize + this.tileSize / 2;
           const itemY = chunkWorldY + y * this.tileSize + this.tileSize / 2;
 
@@ -125,7 +125,7 @@ export class ChunkManager {
 
     if (!chunk) return;
 
-    const obstacleTypes = ['tree', 'rock', 'bush'];
+    const obstacleTypes = ['tree', 'rock', 'bush', 'mountain'];
 
     for (let y = 0; y < this.chunkSize; y++) {
       for (let x = 0; x < this.chunkSize; x++) {
@@ -133,7 +133,8 @@ export class ChunkManager {
 
         for (const obstacleType of obstacleTypes) {
           if (this.terrainGenerator.canSpawnObstacle(tileType, obstacleType)) {
-            const spawnChance = obstacleType === 'tree' ? 0.3 : obstacleType === 'rock' ? 0.2 : 0.1;
+
+            const spawnChance = obstacleType === 'tree' ? 0.1 : obstacleType === 'rock' ? (tileType === 3 ? 0.5 : 0.1) : 0.2;
 
             if (Math.random() < spawnChance) {
               const obstacleX = chunkWorldX + x * this.tileSize + this.tileSize / 2;
@@ -151,6 +152,30 @@ export class ChunkManager {
     }
   }
 
+  getTerrainTypeAt(worldX: number, worldY: number): number {
+    // Определяем чанк по мировым координатам
+    const chunkX = Math.floor(worldX / (this.chunkSize * this.tileSize));
+    const chunkY = Math.floor(worldY / (this.chunkSize * this.tileSize));
+
+    const chunkKey = `${chunkX},${chunkY}`;
+    const chunk = this.loadedChunks.get(chunkKey);
+
+    if (!chunk) {
+      return 2; // GRASS по умолчанию, если чанк не загружен
+    }
+
+    // Определяем локальные координаты в чанке
+    const localX = Math.floor((worldX - chunkX * this.chunkSize * this.tileSize) / this.tileSize);
+    const localY = Math.floor((worldY - chunkY * this.chunkSize * this.tileSize) / this.tileSize);
+
+    // Проверяем границы массива
+    if (localX >= 0 && localX < this.chunkSize && localY >= 0 && localY < this.chunkSize) {
+      return chunk.tiles[localY][localX];
+    }
+
+    return 2; // GRASS по умолчанию, если за границами
+  }
+
   private createItemEntity(itemType: string, x: number, y: number): void {
     const randomSprite = AssetLoader.getRandomAsset(itemType);
     const item = this.itemsGroup.create(x, y, randomSprite || "");
@@ -159,12 +184,15 @@ export class ChunkManager {
       case "mushroom": item.setScale(0.5); break;
       case "wood": item.setScale(0.3); break;
       case "star": item.setScale(0.1); break;
+      case "mountain": item.setScale(1); break;
+
       default: item.setScale(0.5);
     }
-    
+
     item.setData('itemType', itemType);
     item.setData('collected', false);
     item.setInteractive();
+    item.setDepth(y + 500);
     item.body.setSize(20, 20);
   }
 

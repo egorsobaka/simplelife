@@ -19,6 +19,16 @@ export class MainScene extends Phaser.Scene {
   joystickThumb!: Phaser.GameObjects.Arc;
   public container!: Phaser.GameObjects.Container;
 
+  private terrainSpeedMultipliers: { [key: number]: number } = {
+    0: 0,      // WATER - полная остановка
+    1: 0.8,    // SAND - медленнее
+    4: 1.0,    // GRASS - нормальная скорость
+    2: 0.7,    // FOREST - медленнее из-за деревьев
+    3: 0.5,    // MOUNTAIN - очень медленно
+  };
+
+  private currentTerrainType: number = 2; // По умолчанию трава
+
   constructor() {
     super('MainScene');
     this.eventBus = GameEventBus.getInstance();
@@ -83,7 +93,7 @@ export class MainScene extends Phaser.Scene {
     const centerX = width / 2;
     const centerY = height / 2 + height / 4;
 
-    const size = 60;
+    const size = 40;
     const alpha = 0.3;
 
     this.joystickBase = this.add.circle(centerX, centerY, size, 0x0000ff, 0.1).setScrollFactor(0).setDepth(2000);
@@ -258,9 +268,9 @@ export class MainScene extends Phaser.Scene {
 
     // Можно добавить дополнительную логику при столкновении
     const obstacleType = obstacle.getData('type');
-    if (obstacleType === 'tree') {
+    if (obstacleType === 'tree' || obstacleType === 'bush' || obstacleType === 'stone' || obstacleType === 'mountain' ) {
       this.currentItem = obstacle;
-      this.eventBus.emit('enableAction', { action: "tree" });
+      this.eventBus.emit('enableAction', { action: obstacleType });
     }
   }
 
@@ -411,26 +421,69 @@ export class MainScene extends Phaser.Scene {
   }
 
   update() {
+    this.updateTerrainUnderPlayer(); // Определяем тип тайла под игроком
     this.handleMovement();
     this.updateChunks();
     this.player.setColliding(false);
+  }
+
+  private updateTerrainUnderPlayer(): void {
+    if (!this.chunkManager) return;
+
+    // Получаем мировые координаты игрока
+    const playerX = this.player.sprite.x;
+    const playerY = this.player.sprite.y;
+
+    // Определяем тип тайла под игроком
+    this.currentTerrainType = this.chunkManager.getTerrainTypeAt(playerX, playerY);
   }
 
 
   private handleMovement(): void {
     let velocityX = 0;
     let velocityY = 0;
-    const speed = 100;
+    const baseSpeed = 100;
 
-    // const { isMove, newX, newY, anim } = handleMovementJoystick(mobileDir.x, mobileDir.y, maxSpeed, dt);
-    if (this.cursors.left.isDown) velocityX = -speed;
-    if (this.cursors.right.isDown) velocityX = speed;
-    if (this.cursors.up.isDown) velocityY = -speed;
-    if (this.cursors.down.isDown) velocityY = speed;
+    // Получаем множитель скорости для текущего типа terrain
+    const speedMultiplier = this.terrainSpeedMultipliers[this.currentTerrainType] || 1.0;
+    const currentSpeed = baseSpeed * speedMultiplier;
+
+    // Обычное управление
+    if (this.cursors.left.isDown) velocityX = -currentSpeed;
+    if (this.cursors.right.isDown) velocityX = currentSpeed;
+    if (this.cursors.up.isDown) velocityY = -currentSpeed;
+    if (this.cursors.down.isDown) velocityY = currentSpeed;
 
     if (this.joystickData?.active) {
-      velocityX = Math.cos(this.joystickData.angle) * speed * this.joystickData.force;
-      velocityY = Math.sin(this.joystickData.angle) * speed * this.joystickData.force;
+      velocityX = Math.cos(this.joystickData.angle) * currentSpeed * this.joystickData.force;
+      velocityY = Math.sin(this.joystickData.angle) * currentSpeed * this.joystickData.force;
+    }
+
+    // Проверяем, будет ли следующая позиция в воде
+    if (this.currentTerrainType === 0) { // Игрок СЕЙЧАС в воде
+      // Но разрешаем движение, если целевая позиция НЕ вода
+      const nextX = this.player.sprite.x + velocityX * 2; // Примерное смещение за кадр
+      const nextY = this.player.sprite.y + velocityY * 2;
+
+      const nextTerrainType = this.chunkManager.getTerrainTypeAt(nextX, nextY);
+
+      if (nextTerrainType === 0) {
+        // Если целевая позиция тоже вода - блокируем движение
+        this.player.setVelocity(0, 0);
+        this.player.sprite.anims.stop();
+
+        // Показываем сообщение только если еще не показывали
+        if (!this.player.sprite.getData('inWater')) {
+          this.player.sprite.setData('inWater', true);
+          this.events.emit('showMessage', '💧 Вода! Движение невозможно');
+          this.createWaterSplashEffect(this.player.sprite.x, this.player.sprite.y);
+        }
+        return;
+      } else {
+        // Разрешаем движение из воды на сушу
+        this.player.sprite.setData('inWater', false);
+        this.events.emit('showMessage', 'Выбираемся из воды...');
+      }
     }
 
     let moving = velocityX !== 0 || velocityY !== 0;
@@ -439,9 +492,54 @@ export class MainScene extends Phaser.Scene {
       this.player.playAnim(velocityX, velocityY);
       this.eventBus.emit('disableActions');
       this.currentItem = null;
+
+      // Показываем сообщение о замедлении
+      this.showTerrainSpeedMessage(speedMultiplier);
     } else {
       this.player.sprite.anims.stop();
       this.player.setVelocity(0, 0);
+    }
+  }
+
+  private createWaterSplashEffect(x: number, y: number): void {
+    const splash = this.add.particles(x, y, 'items', {
+      speed: { min: 30, max: 80 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.4, end: 0 },
+      lifespan: 800,
+      quantity: 8,
+      tint: 0x4fc3f7
+    });
+
+    this.time.delayedCall(800, () => splash.destroy());
+  }
+
+  private showTerrainSpeedMessage(speedMultiplier: number): void {
+    const wasInWater = this.player.sprite.getData('inWater');
+
+    if (wasInWater && this.currentTerrainType !== 0) {
+      this.player.sprite.setData('inWater', false);
+      this.events.emit('showMessage', 'Вы вышли из воды');
+    }
+
+    // Показываем сообщения о типе местности при значительном изменении скорости
+    if (speedMultiplier < 0.6 && !this.player.sprite.getData('slowTerrainShown')) {
+      this.player.sprite.setData('slowTerrainShown', true);
+
+      switch (this.currentTerrainType) {
+        case 1: // SAND
+          this.events.emit('showMessage', '🏖️ Песок - движение замедлено');
+          break;
+        case 3: // FOREST
+          this.events.emit('showMessage', '🌳 Лес - пробираться сложнее');
+          break;
+        case 4: // MOUNTAIN
+          this.events.emit('showMessage', '⛰️ Горы - очень медленно');
+          break;
+      }
+    } else if (speedMultiplier >= 0.9 && this.player.sprite.getData('slowTerrainShown')) {
+      this.player.sprite.setData('slowTerrainShown', false);
+      this.events.emit('showMessage', '🌿 Равнина - нормальная скорость');
     }
   }
 
