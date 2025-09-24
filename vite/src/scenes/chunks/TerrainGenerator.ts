@@ -1,20 +1,34 @@
 import { AssetLoader } from '../../utils/assetLoader';
 
+export const terrainTypes = {
+  WATER: 0,
+  SAND: 1,
+  FOREST: 2,
+  MOUNTAIN: 3,
+  GRASS: 4,
+  ROCK: 5,
+  BOTTOM: 6,
+};
+
 export class TerrainGenerator {
-  private terrainTypes = {
+  public terrainTypes = {
     WATER: 0,
     SAND: 1,
     FOREST: 2,
     MOUNTAIN: 3,
-    GRASS: 4
+    GRASS: 4,
+    ROCK: 5,
+    BOTTOM: 6,
   };
 
   private terrainColors = {
     [this.terrainTypes.WATER]: 0x4444aa,
     [this.terrainTypes.SAND]: 0xddcc88,
     [this.terrainTypes.FOREST]: 0x229922,
-    [this.terrainTypes.MOUNTAIN]: 0x5d6d7e,
-    [this.terrainTypes.GRASS]: 0x44aa44
+    [this.terrainTypes.MOUNTAIN]: 0x118811,
+    [this.terrainTypes.GRASS]: 0x44aa44,
+    [this.terrainTypes.BOTTOM]: 0x55aa55,
+    [this.terrainTypes.ROCK]: 0x5d6d7e,
   };
   // Добавим в класс эти свойства
   private heightMap: Map<string, number[][]> = new Map(); // Кэш высот для чанков
@@ -95,12 +109,16 @@ export class TerrainGenerator {
     const adjustedHeight = height + periodicValue * 0.2;
 
     if (adjustedHeight > 0.8) {
+      return this.terrainTypes.ROCK; // Высокие горы
+    } else if (adjustedHeight > 0.75) {
       return this.terrainTypes.MOUNTAIN; // Высокие горы
-    } else if (adjustedHeight > 0.6) {
+    } else if (adjustedHeight > 0.65) {
       return this.terrainTypes.FOREST; // Лес на склонах
+    } else if (adjustedHeight > 0.55) {
+      return this.terrainTypes.GRASS; // Лес на склонах
+    } else if (adjustedHeight > 0.45) {
+      return this.terrainTypes.BOTTOM; // Равнины с травой
     } else if (adjustedHeight > 0.4) {
-      return this.terrainTypes.GRASS; // Равнины с травой
-    } else if (adjustedHeight > 0.3) {
       return this.terrainTypes.SAND; // Пляж вокруг озер
     } else {
       return this.terrainTypes.WATER; // Вода (озера)
@@ -132,7 +150,7 @@ export class TerrainGenerator {
 
   private createLake(centerX: number, centerY: number, chunkX: number, chunkY: number,
     chunkSize: number, tiles: number[][], heights: number[][]): void {
-      console.log("heights", heights)
+    console.log("heights", heights)
     const lakeSize = 10 + Math.floor(this.hash(centerX, centerY) % 20); // 10-30 тайлов
     const lakeShape = this.hash(centerX + 1, centerY) % 3; // Разная форма
 
@@ -334,19 +352,19 @@ export class TerrainGenerator {
   canSpawnItem(terrainType: number, itemType: string): boolean {
     switch (itemType) {
       case 'star':
-        return [this.terrainTypes.FOREST, this.terrainTypes.GRASS, this.terrainTypes.SAND].includes(terrainType);
+        return [this.terrainTypes.FOREST, this.terrainTypes.MOUNTAIN, this.terrainTypes.ROCK].includes(terrainType);
       case 'wood':
         return terrainType === this.terrainTypes.FOREST;
       case 'stone':
-        return terrainType === this.terrainTypes.MOUNTAIN || terrainType === this.terrainTypes.FOREST || terrainType === this.terrainTypes.GRASS;
+        return terrainType === this.terrainTypes.MOUNTAIN;
       case 'gold_vein':
         return terrainType === this.terrainTypes.MOUNTAIN;
       case 'mushroom':
-        return [this.terrainTypes.FOREST, this.terrainTypes.GRASS, this.terrainTypes.SAND].includes(terrainType);
+        return [this.terrainTypes.FOREST].includes(terrainType);
       case 'poisonmushroom':
-        return terrainType === this.terrainTypes.FOREST || terrainType === this.terrainTypes.GRASS;
+        return terrainType === this.terrainTypes.FOREST;
       case 'mushroom_rare':
-        return terrainType === this.terrainTypes.FOREST || terrainType === this.terrainTypes.GRASS;
+        return terrainType === this.terrainTypes.FOREST;
       default:
         return false;
     }
@@ -355,13 +373,13 @@ export class TerrainGenerator {
   canSpawnObstacle(terrainType: number, obstacleType: string): boolean {
     switch (obstacleType) {
       case 'tree':
-        return terrainType === this.terrainTypes.FOREST;
+        return terrainType === this.terrainTypes.FOREST || terrainType === this.terrainTypes.GRASS || terrainType === this.terrainTypes.BOTTOM;
       case 'rock':
-        return terrainType === this.terrainTypes.MOUNTAIN || terrainType === this.terrainTypes.FOREST;
+        return terrainType === this.terrainTypes.MOUNTAIN || terrainType === this.terrainTypes.FOREST || terrainType === this.terrainTypes.ROCK;
       case 'mountain':
-        return terrainType === this.terrainTypes.MOUNTAIN || terrainType === this.terrainTypes.FOREST;  
+        return terrainType === this.terrainTypes.MOUNTAIN || terrainType === this.terrainTypes.FOREST || terrainType === this.terrainTypes.ROCK;
       case 'bush':
-        return terrainType === this.terrainTypes.FOREST || terrainType === this.terrainTypes.GRASS;
+        return terrainType === this.terrainTypes.FOREST || terrainType === this.terrainTypes.GRASS || terrainType === this.terrainTypes.SAND || terrainType === this.terrainTypes.BOTTOM;
       default:
         return false;
     }

@@ -1,5 +1,5 @@
 // src/scenes/chunks/ChunkManager.ts
-import { TerrainGenerator } from './TerrainGenerator';
+import { TerrainGenerator, terrainTypes } from './TerrainGenerator';
 import { ItemManager } from '../entities/items/ItemManager';
 import { AssetLoader } from '@/utils/assetLoader';
 
@@ -126,7 +126,53 @@ export class ChunkManager {
         for (const obstacleType of obstacleTypes) {
           if (this.terrainGenerator.canSpawnObstacle(tileType, obstacleType)) {
 
-            const spawnChance = obstacleType === 'tree' ? 0.1 : obstacleType === 'rock' ? (tileType === 3 ? 0.5 : 0.1) : 0.2;
+            let spawnChance = 0.2;
+
+            if (obstacleType === 'tree') {
+              if (tileType === terrainTypes.FOREST) {
+                spawnChance = 0.3;
+              } else if (tileType === terrainTypes.MOUNTAIN) {
+                spawnChance = 0.1;
+              } else if (tileType === terrainTypes.GRASS) {
+                spawnChance = 0.1;
+              } else if (tileType === terrainTypes.BOTTOM) {
+                spawnChance = 0.05;
+              }
+            } else
+              if (obstacleType === 'bush') {
+                if (tileType === terrainTypes.FOREST) {
+                  spawnChance = 0.1;
+                } else if (tileType === terrainTypes.SAND) {
+                  spawnChance = 0.05;
+                } else if (tileType === terrainTypes.GRASS) {
+                  spawnChance = 0.05;
+                } else if (tileType === terrainTypes.BOTTOM) {
+                  spawnChance = 0.1;
+                }
+              } else
+                if (obstacleType === 'rock') {
+                  if (tileType === terrainTypes.MOUNTAIN) {
+                    spawnChance = 0.5;
+                  }
+                  else if (tileType === terrainTypes.ROCK) {
+                    spawnChance = 0.1;
+                  }
+                  else {
+                    spawnChance = 0.1;
+                  }
+                } else
+                  if (obstacleType === 'mountain') {
+                    if (tileType === terrainTypes.FOREST) {
+                      spawnChance = 0.01;
+                    } else if (tileType === terrainTypes.MOUNTAIN) {
+                      spawnChance = 0.1;
+                    } else if (tileType === terrainTypes.GRASS) {
+                      spawnChance = 0.01;
+                    } else if (tileType === terrainTypes.ROCK) {
+                      spawnChance = 0.6;
+                    }
+                  }
+
 
             if (Math.random() < spawnChance) {
               const obstacleX = chunkWorldX + x * this.tileSize + this.tileSize / 2;
@@ -185,7 +231,7 @@ export class ChunkManager {
     item.setData('itemType', itemType);
     item.setData('collected', false);
     item.setInteractive();
-    item.setDepth(y + 500);
+    item.setDepth(y + 4000);
     item.body.setSize(20, 20);
   }
 
@@ -234,15 +280,15 @@ export class ChunkManager {
         obstacle.body?.setSize(40, 40);
         obstacle.setScale(0.5);
         break;
-      case 'rock':
-        obstacle.body?.setSize(30, 30);
-        obstacle.setScale(0.5);
-        break;
       case 'bush':
         obstacle.body?.setSize(25, 25);
         obstacle.setScale(0.2);
         break;
       case 'mountain':
+        obstacle.body?.setSize(50, 50);
+        obstacle.setScale(0.8);
+        break;
+      case 'rock':
         obstacle.body?.setSize(50, 50);
         obstacle.setScale(1);
         break;

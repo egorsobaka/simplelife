@@ -9,7 +9,7 @@ export class Player {
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.sprite = scene.physics.add.sprite(x, y, 'player');
     this.sprite.setScale(40 / PLAYER_WIDTH, 40 / PLAYER_HEIGHT);
-    this.sprite.setOrigin(1, 1);
+    this.sprite.setOrigin(0.5, 0.5);
     this.sprite.setCollideWorldBounds(false);
     this.sprite.setDepth(y+1000);
 
