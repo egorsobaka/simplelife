@@ -13,11 +13,14 @@ export class AssetLoader {
             
             for (const [path, module] of Object.entries(assetsContext)) {
                 const fileName = path.split('/').pop()?.replace('.svg', '');
+                console.log("fileName", fileName)
                 if (fileName) {
                     const assetUrl = (module as any).default;
                     
                     // Группируем по типам (rock, tree, bush и т.д.)
                     const assetType = this.getAssetType(fileName);
+
+                    console.log(assetType, fileName)
                     
                     if (!this.manifest[assetType]) {
                         this.manifest[assetType] = [];
@@ -44,7 +47,7 @@ export class AssetLoader {
         if (fileName.startsWith('wood')) return 'wood';
         if (fileName.startsWith('gold_vein')) return 'gold_vein';
         if (fileName.startsWith('mushroom')) return 'mushroom';
-        if (fileName.startsWith('mushroom_poison')) return 'mushroom_poison';
+        if (fileName.startsWith('poisonmushroom')) return 'poisonmushroom';
         if (fileName.startsWith('star')) return 'star';
 
         return 'other';
@@ -52,6 +55,7 @@ export class AssetLoader {
 
     static getRandomAsset(assetType: string): string | null {
         const assets = this.manifest[assetType];
+        // console.log("assetType", assetType)
         if (!assets || assets.length === 0) {
             console.warn(`No assets found for type: ${assetType}`);
             return this.getFallbackAsset(assetType);

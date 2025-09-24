@@ -41,7 +41,7 @@ export class MainScene extends Phaser.Scene {
 
   private loadDefaultAssets(): void {
     // Проверяем и загружаем обязательные assets если они не загрузились автоматически
-    const requiredAssets = ['player', 'star', 'items'];
+    const requiredAssets = ['player', 'star', 'items', 'poisonmushroom'];
 
     requiredAssets.forEach(asset => {
       if (!this.textures.exists(asset)) {
@@ -49,6 +49,9 @@ export class MainScene extends Phaser.Scene {
         switch (asset) {
           case 'star':
             this.load.image('star', '/star.png');
+            break;
+          case 'poisonmushroom':
+            this.load.image('poisonmushroom', '/poisonmushroom.png');
             break;
           case 'items':
             this.load.spritesheet('items', '/roguelikeSheet_transparent.png', { frameWidth: 16, frameHeight: 16, spacing: 1 });
@@ -104,7 +107,7 @@ export class MainScene extends Phaser.Scene {
     this.input.setDraggable(this.joystickThumb);
 
     this.input.on("drag", (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.GameObject, dragX: number, dragY: number) => {
-      console.log("pointer", pointer);
+      console.log("pointer", pointer.x, pointer.y);
       if (gameObject !== this.joystickThumb) return;
 
       const dx = dragX - this.joystickBase.x;
@@ -315,7 +318,7 @@ export class MainScene extends Phaser.Scene {
         break;
 
       case 'mushroom':
-      case 'mushroom_poison':
+      case 'poisonmushroom':
       case 'mushroom_rare':
         // Обработка всех типов грибов
         if (!isEdible) {

@@ -37,6 +37,8 @@ export class TerrainGenerator {
     // Добавляем озера
     this.generateLakes(chunkX, chunkY, chunkSize, tiles, heights);
 
+    console.log("this.lakeCenters", this.lakeCenters);
+
     return tiles;
   }
 
@@ -130,6 +132,7 @@ export class TerrainGenerator {
 
   private createLake(centerX: number, centerY: number, chunkX: number, chunkY: number,
     chunkSize: number, tiles: number[][], heights: number[][]): void {
+      console.log("heights", heights)
     const lakeSize = 10 + Math.floor(this.hash(centerX, centerY) % 20); // 10-30 тайлов
     const lakeShape = this.hash(centerX + 1, centerY) % 3; // Разная форма
 
@@ -340,7 +343,7 @@ export class TerrainGenerator {
         return terrainType === this.terrainTypes.MOUNTAIN;
       case 'mushroom':
         return [this.terrainTypes.FOREST, this.terrainTypes.GRASS, this.terrainTypes.SAND].includes(terrainType);
-      case 'mushroom_poison':
+      case 'poisonmushroom':
         return terrainType === this.terrainTypes.FOREST || terrainType === this.terrainTypes.GRASS;
       case 'mushroom_rare':
         return terrainType === this.terrainTypes.FOREST || terrainType === this.terrainTypes.GRASS;
@@ -434,17 +437,17 @@ export class TerrainGenerator {
         isEdible: true,
         healthEffect: 10
       },
-      mushroom_poison: {
-        sprite: ['mushroom-1', 'mushroom-5'], // Ядовитые грибы
+      poisonmushroom: {
+        sprite: AssetLoader.getAllAssets('poisonmushroom'),
         isSolid: false,
         canInteract: true,
-        itemType: 'mushroom_poison',
+        itemType: 'poisonmushroom',
         itemQuantity: 1,
         isEdible: false,
         healthEffect: -20
       },
       mushroom_rare: {
-        sprite: ['mushroom-2'], // Ценные грибы
+        sprite: AssetLoader.getAllAssets('mushroom'),
         isSolid: false,
         canInteract: true,
         itemType: 'mushroom_rare',

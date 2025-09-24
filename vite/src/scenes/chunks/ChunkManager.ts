@@ -82,29 +82,21 @@ export class ChunkManager {
         const tileType = tiles[y][x];
 
         let itemType: string | null = null;
-        let spawnChance = 0;
 
         if (this.terrainGenerator.canSpawnItem(tileType, 'star') && Math.random() < 0.1) {
           itemType = 'star';
-          spawnChance = 0.1;
         } else if (this.terrainGenerator.canSpawnItem(tileType, 'wood') && Math.random() < 0.2) {
           itemType = 'wood';
-          spawnChance = 0.2;
         } else if (this.terrainGenerator.canSpawnItem(tileType, 'stone') && Math.random() < 0.15) {
           itemType = 'stone';
-          spawnChance = 0.15;
         } else if (this.terrainGenerator.canSpawnItem(tileType, 'gold_vein') && Math.random() < 0.15) {
           itemType = 'gold_vein';
-          spawnChance = 0.15;
         } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom') && Math.random() < 0.15) {
           itemType = 'mushroom';
-          spawnChance = 0.15;
-        } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom_poison') && Math.random() < 0.15) {
-          itemType = 'mushroom_poison';
-          spawnChance = 0.15;
+        } else if (this.terrainGenerator.canSpawnItem(tileType, 'poisonmushroom') && Math.random() < 0.15) {
+          itemType = 'poisonmushroom';
         } else if (this.terrainGenerator.canSpawnItem(tileType, 'mushroom_rate') && Math.random() < 0.15) {
           itemType = 'mushroom_rate';
-          spawnChance = 0.15;
         }
 
         if (itemType) {
@@ -185,6 +177,7 @@ export class ChunkManager {
       case "wood": item.setScale(0.3); break;
       case "star": item.setScale(0.1); break;
       case "mountain": item.setScale(1); break;
+      case "poisonmushroom": item.setScale(0.5); break;
 
       default: item.setScale(0.5);
     }
